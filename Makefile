@@ -1,8 +1,17 @@
+ifndef A_SIZE
+   A_SIZE = 10000000
+endif
+
+ifndef N_AMOUNT
+   N_AMOUNT = 10
+endif
+
+
 CC = gcc
-CFLAGS = -O2 -fopenmp
+CFLAGS = -O2 -fopenmp -DSTREAM_ARRAY_SIZE=$(A_SIZE) -DNTIMES=$(N_AMOUNT)
 
 FC = gfortran
-FFLAGS = -O2 -fopenmp
+FFLAGS = -O2 -fopenmp -DSTREAM_ARRAY_SIZE=$(A_SIZE) -DNTIMES=$(N_AMOUNT)
 
 all: stream_f.exe stream_c.exe
 
