@@ -10,15 +10,15 @@ endif
 CC = gcc
 CFLAGS = -O2 -fopenmp -DSTREAM_ARRAY_SIZE=$(A_SIZE) -DNTIMES=$(N_AMOUNT)
 
-FC = gfortran
-FFLAGS = -O2 -fopenmp -DSTREAM_ARRAY_SIZE=$(A_SIZE) -DNTIMES=$(N_AMOUNT)
+#FC = gfortran
+#FFLAGS = -O2 -fopenmp -DSTREAM_ARRAY_SIZE=$(A_SIZE) -DNTIMES=$(N_AMOUNT)
 
 all: stream_f.exe stream_c.exe
 
 stream_f.exe: stream.f mysecond.o
 	$(CC) $(CFLAGS) -c mysecond.c
-	$(FC) $(FFLAGS) -c stream.f
-	$(FC) $(FFLAGS) stream.o mysecond.o -o stream_f.exe
+	#$(FC) $(FFLAGS) -c stream.f
+	#$(FC) $(FFLAGS) stream.o mysecond.o -o stream_f.exe
 
 stream_c.exe: stream.c
 	$(CC) $(CFLAGS) stream.c -o stream_c.exe
