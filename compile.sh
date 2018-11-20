@@ -24,5 +24,3 @@ then
 else 
 	make
 fi
-
-./stream_c.exe
