@@ -1,0 +1,10 @@
+
+# |<----  Using a Maximum Of 50 Characters  ---->|
+# If applied, this commit will...
+
+# |<----   Try To Limit Each Line to a Maximum Of 72 Characters   ---->|
+# Link the related issue(s): #number
+# Explain what has been changed (if not clear from title)
+# Explain why this change is being made in the related issue
+# If typo or build errors explain the reasons for the commit here
+#  And copy error message
