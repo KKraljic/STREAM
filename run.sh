@@ -7,11 +7,12 @@
 #SBATCH --get-user-env
 #SBATCH --clusters=mpp2
 #SBATCH --export=NONE
-#SBATCH --time=00:05:00
+#SBATCH --time=00:20:00
 
 # LOAD MODULE
 module load mpi.intel
 module load likwid/4.3
+DATA_FLAGS="-g CACHES"
 
 echo '======================================================='
 echo '===========Starting ICC Streamer and LIKWID============'
@@ -23,36 +24,43 @@ echo ''
 echo ''
 echo ''
 echo '-----> Baseline ICC:'
-ARRAY_SIZE=1
-while [  $ARRAY_SIZE -lt 67000000 ]; 
+AMOUNT_THREADS=1
+while [  $AMOUNT_THREADS -lt 5 ];
 do
-
-        ./compile.sh -c icc -a $ARRAY_SIZE -n 10
-        ./stream_c.exe
-        let ARRAY_SIZE=ARRAY_SIZE+1000000
-done
-echo '-----> Baseline GCC:'
-ARRAY_SIZE=1
-while [  $ARRAY_SIZE -lt 67000000 ]; 
-do
-
-        ./compile.sh -c gcc -a $ARRAY_SIZE -n 10
-        ./stream_c.exe
-        let ARRAY_SIZE=ARRAY_SIZE+1000000
+	export OMP_NUM_THREADS=$AMOUNT_THREADS
+	ARRAY_SIZE=1
+	while [  $ARRAY_SIZE -lt 67000000 ]; 
+	do
+        	~/compilations/icc/$ARRAY_SIZE/10/stream_c.exe
+        	let ARRAY_SIZE=ARRAY_SIZE+1000000
+	done
+	echo '-----> Baseline GCC:'
+	ARRAY_SIZE=1
+	while [  $ARRAY_SIZE -lt 67000000 ]; 
+	do
+        	~/compilations/gcc/$ARRAY_SIZE/10/stream_c.exe
+	        let ARRAY_SIZE=ARRAY_SIZE+1000000
+	done
+	let AMOUNT_THREADS=AMOUNT_THREADS+1
 done
 echo '-----> Benchmark Output:'
-ARRAY_SIZE=1
-while [  $ARRAY_SIZE -lt 26 ]; 
+AMOUNT_THREADS=1
+while [  $AMOUNT_THREADS -lt 5 ];
 do
-	N_ITERATIONS=4
-        while [  $N_ITERATIONS -lt 5 ]; 
-        do
-                ./compile.sh -c icc -a $((2**$ARRAY_SIZE)) -n $((2**N_ITERATIONS))
-                ./stream_c.exe
-		likwid-perfctr -g CACHES -g DATA -g ENERGY -g FALSE_SHARE -g FLOPS_AVX -g HA -g L2CACHE -g L3CACHE -g MEM -g NUMA ./stream_c.exe
-                let N_ITERATIONS=N_ITERATIONS+1
-        done
-        let ARRAY_SIZE=ARRAY_SIZE+1
+	export OMP_NUM_THREADS=$AMOUNT_THREADS
+	ARRAY_SIZE=1
+	while [  $ARRAY_SIZE -lt 26 ]; 
+	do
+		N_ITERATIONS=4
+	        while [  $N_ITERATIONS -lt 5 ]; 
+	        do
+        	        ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+			likwid-perfctr ${DATA_FLAGS} -execpid -C 1-4 ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+	                let N_ITERATIONS=N_ITERATIONS+1
+        	done
+	        let ARRAY_SIZE=ARRAY_SIZE+1
+	done
+	let AMOUNT_THREADS=AMOUNT_THREADS+1
 done
 echo ''
 echo ''
@@ -67,19 +75,22 @@ module list
 echo ''
 echo ''
 echo '-----> Benchmark Output'
-ARRAY_SIZE=1
-while [  $ARRAY_SIZE -lt 26 ]; 
+AMOUNT_THREADS=1
+while [  $AMOUNT_THREADS -lt 5 ];
 do
-	N_ITERATIONS=4
-	while [  $N_ITERATIONS -lt 5 ]; 
+	export OMP_NUM_THREADS=$AMOUNT_THREADS
+	ARRAY_SIZE=1
+	while [  $ARRAY_SIZE -lt 26 ]; 
 	do
-		./compile.sh -c gcc -a $((2**$ARRAY_SIZE)) -n $((2**$N_ITERATIONS))
-		./stream_c.exe
-		likwid-perfctr -g CACHES -g DATA -g ENERGY -g FALSE_SHARE -g FLOPS_AVX -g HA -g L2CACHE -g L3CACHE -g MEM -g NUMA ./stream_c.exe
-		let N_ITERATIONS=N_ITERATIONS+1
+		N_ITERATIONS=4
+		while [  $N_ITERATIONS -lt 5 ]; 
+		do
+			~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+			likwid-perfctr ${DATA_FLAGS} -execpid -C 1-4 ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+			let N_ITERATIONS=N_ITERATIONS+1
+		done
+		let ARRAY_SIZE=ARRAY_SIZE+1
 	done
-	let ARRAY_SIZE=ARRAY_SIZE+1
+	let AMOUNT_THREADS=AMOUNT_THREADS+1
 done
-echo ''
-echo ''
 
