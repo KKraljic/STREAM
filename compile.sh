@@ -20,6 +20,8 @@ then
 	if [ $N -gt 0 ];
 	then 
 		make CC=$C A_SIZE=$A N_AMOUNT=$N
+		mkdir -p ~/compilations/$C/$A/$N/
+		cp stream_c.exe ~/compilations/$C/$A/$N/stream_c.exe 
 	else
 		make CC=$C
 	fi

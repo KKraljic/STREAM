@@ -45,7 +45,6 @@
 # include <math.h>
 # include <float.h>
 # include <limits.h>
-# include <sys/time.h>
 
 /*-----------------------------------------------------------------------
  * INSTRUCTIONS:
@@ -295,7 +294,7 @@ int num_threads = 0;
 	    }
 	}
     
-    printf("%s %12s %12s %8s %21s %12s %12s %12s\n", "Threads", "Array_Size", "N_Times", "Func", "Best_Rate_MB/s", "Avg_time", "Min_time", "Max_time");
+    printf("%s %12s %12s %8s %21s %13s %12s %12s\n", "Threads", "Array_Size", "N_Times", "Func", "Best_Rate_MB/s", "Avg_time", "Min_time", "Max_time");
     for (j=0; j<4; j++) {
 		avgtime[j] = avgtime[j]/(double)(NTIMES-1);
 
