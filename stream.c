@@ -183,8 +183,8 @@ static STREAM_TYPE	a[STREAM_ARRAY_SIZE+OFFSET],
 static double	avgtime[4] = {0}, maxtime[4] = {0},
 		mintime[4] = {FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX};
 
-static char	*label[4] = {"Copy:      ", "Scale:     ",
-    "Add:       ", "Triad:     "};
+static char	*label[4] = {"Copy       ", "Scale      ",
+    "Add        ", "Triad      "};
 
 static double	bytes[4] = {
     2 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE,
@@ -242,25 +242,24 @@ main()
     printf("Each kernel will be executed %d times.\n", NTIMES);
     printf(" The *best* time for each kernel (excluding the first iteration)\n"); 
     printf(" will be used to compute the reported bandwidth.\n");
-
 #ifdef _OPENMP
     printf(HLINE);
-#pragma omp parallel 
+#pragma omp parallel shared(j)
     {
 #pragma omp master
 	{
-	    k = omp_get_num_threads();
-	    printf ("Number of Threads requested = %i\n",k);
+	    j = omp_get_num_threads();
+	    printf ("Number of Threads requested = %i\n", j);
         }
     }
 #endif
 
+int num_threads = 0;
 #ifdef _OPENMP
-	k = 0;
-#pragma omp parallel
+#pragma omp parallel shared(num_threads)
 #pragma omp atomic 
-		k++;
-    printf ("Number of Threads counted = %i\n",k);
+		num_threads++;
+    printf ("Number of Threads counted = %i\n", num_threads);
 #endif
 
     /* Get initial value for system clock. */
@@ -359,11 +358,14 @@ main()
 	    }
 	}
     
-    printf("Function    Best Rate MB/s  Avg time     Min time     Max time\n");
+    printf("%s %12s %12s %8s %21s %12s %12s %12s\n", "Threads", "Array_Size", "N_Times", "Func", "Best_Rate_MB/s", "Avg_time", "Min_time", "Max_time");
     for (j=0; j<4; j++) {
 		avgtime[j] = avgtime[j]/(double)(NTIMES-1);
 
-		printf("%s%12.1f  %11.6f  %11.6f  %11.6f\n", label[j],
+		printf("%i %16llu %9d %20s %2.1f  %19.6f  %11.6f  %11.6f\n", num_threads, 
+	       STREAM_ARRAY_SIZE, 
+	       NTIMES,
+	       label[j], 	
 	       1.0E-06 * bytes[j]/mintime[j],
 	       avgtime[j],
 	       mintime[j],
