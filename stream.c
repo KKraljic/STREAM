@@ -214,52 +214,11 @@ main()
     STREAM_TYPE		scalar;
     double		t, times[4][NTIMES];
 
-    /* --- SETUP --- determine precision and check timing --- */
-
-    printf(HLINE);
-    printf("STREAM version $Revision: 5.10 $\n");
-    printf(HLINE);
-    BytesPerWord = sizeof(STREAM_TYPE);
-    printf("This system uses %d bytes per array element.\n",
-	BytesPerWord);
-
-    printf(HLINE);
-#ifdef N
-    printf("*****  WARNING: ******\n");
-    printf("      It appears that you set the preprocessor variable N when compiling this code.\n");
-    printf("      This version of the code uses the preprocesor variable STREAM_ARRAY_SIZE to control the array size\n");
-    printf("      Reverting to default value of STREAM_ARRAY_SIZE=%llu\n",(unsigned long long) STREAM_ARRAY_SIZE);
-    printf("*****  WARNING: ******\n");
-#endif
-
-    printf("Array size = %llu (elements), Offset = %d (elements)\n" , (unsigned long long) STREAM_ARRAY_SIZE, OFFSET);
-    printf("Memory per array = %.1f MiB (= %.1f GiB).\n", 
-	BytesPerWord * ( (double) STREAM_ARRAY_SIZE / 1024.0/1024.0),
-	BytesPerWord * ( (double) STREAM_ARRAY_SIZE / 1024.0/1024.0/1024.0));
-    printf("Total memory required = %.1f MiB (= %.1f GiB).\n",
-	(3.0 * BytesPerWord) * ( (double) STREAM_ARRAY_SIZE / 1024.0/1024.),
-	(3.0 * BytesPerWord) * ( (double) STREAM_ARRAY_SIZE / 1024.0/1024./1024.));
-    printf("Each kernel will be executed %d times.\n", NTIMES);
-    printf(" The *best* time for each kernel (excluding the first iteration)\n"); 
-    printf(" will be used to compute the reported bandwidth.\n");
-#ifdef _OPENMP
-    printf(HLINE);
-#pragma omp parallel shared(j)
-    {
-#pragma omp master
-	{
-	    j = omp_get_num_threads();
-	    printf ("Number of Threads requested = %i\n", j);
-        }
-    }
-#endif
-
 int num_threads = 0;
 #ifdef _OPENMP
 #pragma omp parallel shared(num_threads)
 #pragma omp atomic 
 		num_threads++;
-    printf ("Number of Threads counted = %i\n", num_threads);
 #endif
 
     /* Get initial value for system clock. */
@@ -270,35 +229,13 @@ int num_threads = 0;
 	    c[j] = 0.0;
 	}
 
-    printf(HLINE);
 
-    if  ( (quantum = checktick()) >= 1) 
-	printf("Your clock granularity/precision appears to be "
-	    "%d microseconds.\n", quantum);
-    else {
-	printf("Your clock granularity appears to be "
-	    "less than one microsecond.\n");
-	quantum = 1;
-    }
 
     t = mysecond();
 #pragma omp parallel for
     for (j = 0; j < STREAM_ARRAY_SIZE; j++)
 		a[j] = 2.0E0 * a[j];
     t = 1.0E6 * (mysecond() - t);
-
-    printf("Each test below will take on the order"
-	" of %d microseconds.\n", (int) t  );
-    printf("   (= %d clock ticks)\n", (int) (t/quantum) );
-    printf("Increase the size of the arrays if this shows that\n");
-    printf("you are not getting at least 20 clock ticks per test.\n");
-
-    printf(HLINE);
-
-    printf("WARNING -- The above is only a rough guideline.\n");
-    printf("For best results, please be sure you know the\n");
-    printf("precision of your system timer.\n");
-    printf(HLINE);
     
     /*	--- MAIN LOOP --- repeat test cases NTIMES times --- */
 
@@ -371,11 +308,6 @@ int num_threads = 0;
 	       mintime[j],
 	       maxtime[j]);
     }
-    printf(HLINE);
-
-    /* --- Check Results --- */
-    checkSTREAMresults();
-    printf(HLINE);
 
     return 0;
 }
