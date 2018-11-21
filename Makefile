@@ -7,7 +7,7 @@ ifndef N_AMOUNT
 endif
 
 
-CC = gcc
+#CC = gcc
 CFLAGS = -O2 -fopenmp -DSTREAM_ARRAY_SIZE=$(A_SIZE) -DNTIMES=$(N_AMOUNT)
 
 #FC = gfortran

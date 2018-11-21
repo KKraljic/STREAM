@@ -1,13 +1,15 @@
 #/bin/bash
 A=0
 N=0
+C=gcc
 
-while getopts a:n: option
+while getopts a:n:c: option
 do
 	case "${option}"
 	in
 		a) A=${OPTARG};;
 		n) N=${OPTARG};;
+		c) C=${OPTARG};;
 		esac
 done
 
@@ -17,10 +19,10 @@ if [ $A -gt 0 ];
 then 
 	if [ $N -gt 0 ];
 	then 
-		make A_SIZE=$A N_AMOUNT=$N
+		make CC=$C A_SIZE=$A N_AMOUNT=$N
 	else
-		make
+		make CC=$C
 	fi
 else 
-	make
+	make CC=$C
 fi
