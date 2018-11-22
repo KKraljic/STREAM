@@ -206,93 +206,82 @@ extern int omp_get_num_threads();
 int
 main()
     {
-    int			quantum, checktick();
-    int			BytesPerWord;
-    int			k;
-    ssize_t		j;
-    STREAM_TYPE		scalar;
-    double		t, times[4][NTIMES];
+    int	quantum, checktick(), BytesPerWord, k;
+    ssize_t j;
+    STREAM_TYPE scalar;
+    double t, times[4][NTIMES];
+    int num_threads = 0;
 
-int num_threads = 0;
 #ifdef _OPENMP
-#pragma omp parallel shared(num_threads)
-#pragma omp atomic 
-		num_threads++;
+	#pragma omp parallel shared(num_threads)
+	#pragma omp atomic 
+	num_threads++;
 #endif
 
-    /* Get initial value for system clock. */
-#pragma omp parallel for
+/* Get initial value for system clock. */
+    #pragma omp parallel for
     for (j=0; j<STREAM_ARRAY_SIZE; j++) {
 	    a[j] = 1.0;
 	    b[j] = 2.0;
 	    c[j] = 0.0;
-	}
-
-
+    }
 
     t = mysecond();
-#pragma omp parallel for
-    for (j = 0; j < STREAM_ARRAY_SIZE; j++)
-		a[j] = 2.0E0 * a[j];
+    #pragma omp parallel for
+    for (j = 0; j < STREAM_ARRAY_SIZE; j++) a[j] = 2.0E0 * a[j];
+
     t = 1.0E6 * (mysecond() - t);
     
     /*	--- MAIN LOOP --- repeat test cases NTIMES times --- */
 
     scalar = 3.0;
-    for (k=0; k<NTIMES; k++)
-	{
+    for (k=0; k<NTIMES; k++){
 	times[0][k] = mysecond();
-#ifdef TUNED
-        tuned_STREAM_Copy();
-#else
-#pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    c[j] = a[j];
-#endif
+	#ifdef TUNED
+            tuned_STREAM_Copy();
+	#else
+	    #pragma omp parallel for
+	    for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j];
+	#endif
 	times[0][k] = mysecond() - times[0][k];
-	
 	times[1][k] = mysecond();
-#ifdef TUNED
-        tuned_STREAM_Scale(scalar);
-#else
-#pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    b[j] = scalar*c[j];
-#endif
+
+	#ifdef TUNED
+            tuned_STREAM_Scale(scalar);
+	#else
+	    #pragma omp parallel for
+	    for (j=0; j<STREAM_ARRAY_SIZE; j++) b[j] = scalar*c[j];
+	#endif
 	times[1][k] = mysecond() - times[1][k];
-	
 	times[2][k] = mysecond();
-#ifdef TUNED
-        tuned_STREAM_Add();
-#else
-#pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    c[j] = a[j]+b[j];
-#endif
+
+	#ifdef TUNED
+            tuned_STREAM_Add();
+	#else
+	    #pragma omp parallel for
+	    for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j]+b[j];
+	#endif
 	times[2][k] = mysecond() - times[2][k];
-	
 	times[3][k] = mysecond();
-#ifdef TUNED
-        tuned_STREAM_Triad(scalar);
-#else
-#pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    a[j] = b[j]+scalar*c[j];
-#endif
+
+	#ifdef TUNED
+            tuned_STREAM_Triad(scalar);
+	#else
+	    #pragma omp parallel for
+	        for (j=0; j<STREAM_ARRAY_SIZE; j++) a[j] = b[j]+scalar*c[j];
+	#endif
 	times[3][k] = mysecond() - times[3][k];
-	}
+    }
 
     /*	--- SUMMARY --- */
-
-    for (k=1; k<NTIMES; k++) /* note -- skip first iteration */
-	{
-	for (j=0; j<4; j++)
-	    {
+    /* note -- skip first iteration */
+    for (k=1; k<NTIMES; k++){
+	for (j=0; j<4; j++){
 	    avgtime[j] = avgtime[j] + times[j][k];
 	    mintime[j] = MIN(mintime[j], times[j][k]);
 	    maxtime[j] = MAX(maxtime[j], times[j][k]);
-	    }
 	}
+    }
     
     printf("%s %12s %12s %8s %21s %13s %12s %12s\n", "Threads", "Array_Size", "N_Times", "Func", "Best_Rate_MB/s", "Avg_time", "Min_time", "Max_time");
     for (j=0; j<4; j++) {
