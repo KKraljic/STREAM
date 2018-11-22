@@ -29,6 +29,7 @@ do
 done
 module unload mpi.intel
 module load gcc
+module load likwid/4.3
 module list
 echo '-----> Benchmark Output'
 ARRAY_SIZE=1

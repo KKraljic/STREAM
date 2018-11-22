@@ -45,6 +45,9 @@
 # include <math.h>
 # include <float.h>
 # include <limits.h>
+#ifdef LIKWID_PERFMON
+    #include <likwid.h>
+#endif
 
 /*-----------------------------------------------------------------------
  * INSTRUCTIONS:
@@ -203,9 +206,8 @@ extern void tuned_STREAM_Triad(STREAM_TYPE scalar);
 #ifdef _OPENMP
 extern int omp_get_num_threads();
 #endif
-int
-main()
-    {
+
+int main(){
     int	quantum, checktick(), BytesPerWord, k;
     ssize_t j;
     STREAM_TYPE scalar;
@@ -235,6 +237,14 @@ main()
     /*	--- MAIN LOOP --- repeat test cases NTIMES times --- */
 
     scalar = 3.0;
+    #ifdef LIKWID_PERFMON
+	LIKWID_MARKER_INIT;
+        #pragma omp parallel
+        {
+            LIKWID_MARKER_THREADINIT;
+        }
+    #endif
+
     for (k=0; k<NTIMES; k++){
 	times[0][k] = mysecond();
 	#ifdef TUNED
@@ -272,6 +282,10 @@ main()
 	#endif
 	times[3][k] = mysecond() - times[3][k];
     }
+
+    #ifdef LIKWID_PERFMON
+        LIKWID_MARKER_CLOSE;
+    #endif
 
     /*	--- SUMMARY --- */
     /* note -- skip first iteration */
