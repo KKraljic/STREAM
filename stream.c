@@ -246,57 +246,85 @@ int main(){
 
     scalar = 3.0;
 
-    LIKWID_MARKER_START("COPY");
     for (k=0; k<NTIMES; k++){
 	times[0][k] = mysecond();
 	#ifdef TUNED
             tuned_STREAM_Copy();
 	#else
-	    #pragma omp parallel for
-	    for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j];
+	    #pragma omp parallel 
+	    {
+  		#ifdef LIKWID_PERFMON
+	            LIKWID_MARKER_START("COPY");
+	            #pragma omp for
+	            for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j];
+		    LIKWID_MARKER_STOP("COPY");
+		#else
+		    for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j];
+		#endif
+            }
 	#endif
 	times[0][k] = mysecond() - times[0][k];
     }
-    LIKWID_MARKER_STOP("COPY");
 
-    LIKWID_MARKER_START("SCALE");
     for (k=0; k<NTIMES; k++){
 	times[1][k] = mysecond();
 	#ifdef TUNED
             tuned_STREAM_Scale(scalar);
 	#else
-	    #pragma omp parallel for
-	    for (j=0; j<STREAM_ARRAY_SIZE; j++) b[j] = scalar*c[j];
+	    #pragma omp parallel
+	    {
+		#ifdef LIKWID_PERFMON
+	            LIKWID_MARKER_START("SCALE");
+	            #pragma omp for
+	            for (j=0; j<STREAM_ARRAY_SIZE; j++) b[j] = scalar*c[j];
+      		    LIKWID_MARKER_STOP("SCALE");
+		#else
+		    for (j=0; j<STREAM_ARRAY_SIZE; j++) b[j] = scalar*c[j];
+		#endif
+	    }
 	#endif
 	times[1][k] = mysecond() - times[1][k];
     }
-    LIKWID_MARKER_STOP("SCALE");
 
-    LIKWID_MARKER_START("ADD");
     for (k=0; k<NTIMES; k++){
 	times[2][k] = mysecond();
 	#ifdef TUNED
             tuned_STREAM_Add();
 	#else
-	    #pragma omp parallel for
-	    for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j]+b[j];
+	    #pragma omp parallel
+	    {
+		#ifdef LIKWID_PERFMON
+                    LIKWID_MARKER_START("ADD");
+	            #pragma omp for
+ 		    for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j]+b[j];
+	            LIKWID_MARKER_STOP("ADD");	
+		#else
+		    for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j]+b[j];
+		#endif
+	    }
 	#endif
 	times[2][k] = mysecond() - times[2][k];
     }
-    LIKWID_MARKER_STOP("ADD");
 
-    LIKWID_MARKER_START("TRIAD");
     for (k=0; k<NTIMES; k++){
 	times[3][k] = mysecond();
 	#ifdef TUNED
             tuned_STREAM_Triad(scalar);
 	#else
-	    #pragma omp parallel for
-	        for (j=0; j<STREAM_ARRAY_SIZE; j++) a[j] = b[j]+scalar*c[j];
+            #pragma omp parallel
+            {
+		#ifdef LIKWID_PERFMON
+                    LIKWID_MARKER_START("TRIAD");
+                    #pragma omp for
+	            for (j=0; j<STREAM_ARRAY_SIZE; j++) a[j] = b[j]+scalar*c[j];
+		    LIKWID_MARKER_STOP("TRIAD");
+		#else
+		    for (j=0; j<STREAM_ARRAY_SIZE; j++) a[j] = b[j]+scalar*c[j];
+		#endif
+	    }
 	#endif
 	times[3][k] = mysecond() - times[3][k];
     }  
-    LIKWID_MARKER_STOP("TRIAD");
 
     #ifdef LIKWID_PERFMON
         LIKWID_MARKER_CLOSE;

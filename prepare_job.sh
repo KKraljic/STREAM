@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#ICC
 module load mpi.intel
 module load likwid/4.3
 
@@ -27,11 +27,13 @@ do
         done
         let ARRAY_SIZE=ARRAY_SIZE+1
 done
+
+#GCC
 module unload mpi.intel
 module load gcc
 module load likwid/4.3
 module list
-echo '-----> Benchmark Output'
+
 ARRAY_SIZE=1
 while [  $ARRAY_SIZE -lt 26 ]; 
 do

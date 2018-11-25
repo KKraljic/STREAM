@@ -13,5 +13,5 @@
 module load mpi.intel
 module load likwid/4.3
 
-export OMP_NUM_THREADS=28
-likwid-perfctr -g MEM -execpid -C S0:0-13@S1:14-28 ./stream_c.exe
+export OMP_NUM_THREADS=2
+likwid-perfctr -g MEM -execpid -C 0-27 -m ./stream_c.exe
