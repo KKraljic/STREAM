@@ -41,13 +41,12 @@
 /*  5. Absolutely no warranty is expressed or implied.                   */
 /*-----------------------------------------------------------------------*/
 # include <stdio.h>
+# include <stdlib.h>
 # include <unistd.h>
 # include <math.h>
 # include <float.h>
 # include <limits.h>
-#ifdef LIKWID_PERFMON
-    #include <likwid.h>
-#endif
+#include <likwid.h>
 
 /*-----------------------------------------------------------------------
  * INSTRUCTIONS:
@@ -55,18 +54,18 @@
  *	1) STREAM requires different amounts of memory to run on different
  *           systems, depending on both the system cache size(s) and the
  *           granularity of the system timer.
- *     You should adjust the value of 'STREAM_ARRAY_SIZE' (below)
+ *     You should adjust the value of 'stream_array_size' (below)
  *           to meet *both* of the following criteria:
  *       (a) Each array must be at least 4 times the size of the
  *           available cache memory. I don't worry about the difference
  *           between 10^6 and 2^20, so in practice the minimum array size
  *           is about 3.8 times the cache size.
  *           Example 1: One Xeon E3 with 8 MB L3 cache
- *               STREAM_ARRAY_SIZE should be >= 4 million, giving
+ *               stream_array_size should be >= 4 million, giving
  *               an array size of 30.5 MB and a total memory requirement
  *               of 91.5 MB.  
  *           Example 2: Two Xeon E5's with 20 MB L3 cache each (using OpenMP)
- *               STREAM_ARRAY_SIZE should be >= 20 million, giving
+ *               stream_array_size should be >= 20 million, giving
  *               an array size of 153 MB and a total memory requirement
  *               of 458 MB.  
  *       (b) The size should be large enough so that the 'timing calibration'
@@ -85,16 +84,7 @@
  *          on properly configured 64-bit systems.  Additional compiler options
  *          (such as "-mcmodel=medium") may be required for large memory runs.
  *
- *      Array size can be set at compile time without modifying the source
- *          code for the (many) compilers that support preprocessor definitions
- *          on the compile line.  E.g.,
- *                gcc -O -DSTREAM_ARRAY_SIZE=100000000 stream.c -o stream.100M
- *          will override the default size of 10M with a new size of 100M elements
- *          per array.
  */
-#ifndef STREAM_ARRAY_SIZE
-#   define STREAM_ARRAY_SIZE	10000000
-#endif
 
 /*  2) STREAM runs each kernel "NTIMES" times and reports the *best* result
  *         for any iteration after the first, therefore the minimum value
@@ -106,24 +96,12 @@
  *         code using, for example, "-DNTIMES=7".
  */
 #ifdef NTIMES
-#if NTIMES<=1
-#   define NTIMES	10
-#endif
+	#if NTIMES<=1
+	#   define NTIMES	30
+	#endif
 #endif
 #ifndef NTIMES
-#   define NTIMES	10
-#endif
-
-/*  Users are allowed to modify the "OFFSET" variable, which *may* change the
- *         relative alignment of the arrays (though compilers may change the 
- *         effective offset by making the arrays non-contiguous on some systems). 
- *      Use of non-zero values for OFFSET can be especially helpful if the
- *         STREAM_ARRAY_SIZE is set to a value close to a large power of 2.
- *      OFFSET can also be set on the compile line without changing the source
- *         code using, for example, "-DOFFSET=56".
- */
-#ifndef OFFSET
-#   define OFFSET	0
+#   define NTIMES	30
 #endif
 
 /*
@@ -178,182 +156,167 @@
 #define STREAM_TYPE double
 #endif
 
-static STREAM_TYPE	a[STREAM_ARRAY_SIZE+OFFSET],
-			b[STREAM_ARRAY_SIZE+OFFSET],
-			c[STREAM_ARRAY_SIZE+OFFSET];
-
 static double	avgtime[4] = {0}, maxtime[4] = {0},
 		mintime[4] = {FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX};
 
 static char	*label[4] = {"Copy       ", "Scale      ",
     "Add        ", "Triad      "};
 
-static double	bytes[4] = {
-    2 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE,
-    2 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE,
-    3 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE,
-    3 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE
-    };
-
 extern double mysecond();
 extern void checkSTREAMresults();
-#ifdef TUNED
-extern void tuned_STREAM_Copy();
-extern void tuned_STREAM_Scale(STREAM_TYPE scalar);
-extern void tuned_STREAM_Add();
-extern void tuned_STREAM_Triad(STREAM_TYPE scalar);
-#endif
-#ifdef _OPENMP
 extern int omp_get_num_threads();
-#endif
 
-int main(){
-    int	quantum, checktick(), BytesPerWord, k;
-    ssize_t j;
-    STREAM_TYPE scalar;
-    double t, times[4][NTIMES];
-    int num_threads = 0;
-    #ifdef LIKWID_PERFMON
-        LIKWID_MARKER_INIT;
+
+int main(int argc, char **argv){
+	int temp, array_power = 18, offset = 0, size_iterator;
+	ssize_t max_array_size, stream_array_size;
+	
+	int checktick(), k;
+	ssize_t j;
+	STREAM_TYPE scalar;
+	double t, times[4][NTIMES];
+    	int num_threads = 0;
+	char region_tag[80];//80 is an arbitratry number; large enough to keep the tags...
+	
+	
+	while ((temp = getopt (argc, argv, "s:o:")) != -1){
+		switch (temp){
+		  case 's':
+			array_power = atoi(optarg);
+			break;
+		  case 'o':
+			offset = atoi(optarg);
+			break;
+		  default:
+			printf("Invalid arguments. Aborting.");
+			exit(1);
+		 }
+	}
+	
+
+	LIKWID_MARKER_INIT;
         #pragma omp parallel
         {
-            LIKWID_MARKER_THREADINIT;
+        	LIKWID_MARKER_THREADINIT;
         }
-    #endif
 
 
+	#pragma omp parallel shared(num_threads)
+	{
+		#pragma omp atomic 
+		num_threads++;
+	}
+   
+	max_array_size = (ssize_t) (pow(2, array_power) + 0.5);
+	int count = 1;
+	for(stream_array_size=1; stream_array_size<max_array_size; stream_array_size = (ssize_t) (pow(2, count) + 0.5)){
+		count++;
+		STREAM_TYPE	a[stream_array_size+offset],
+				b[stream_array_size+offset],
+				c[stream_array_size+offset];
+				
+		double	bytes[4] = {
+			2 * sizeof(STREAM_TYPE) * stream_array_size,
+			2 * sizeof(STREAM_TYPE) * stream_array_size,
+			3 * sizeof(STREAM_TYPE) * stream_array_size,
+			3 * sizeof(STREAM_TYPE) * stream_array_size
+		};
+		/* Get initial value for system clock. */
+		#pragma omp parallel for
+		for (j=0; j<stream_array_size; j++) {
+			a[j] = 1.0;
+			b[j] = 2.0;
+			c[j] = 0.0;
+		}
 
-    #ifdef _OPENMP
-        #pragma omp parallel shared(num_threads)
-	#pragma omp atomic 
-	num_threads++;
-    #endif
-/* Get initial value for system clock. */
-    #pragma omp parallel for
-    for (j=0; j<STREAM_ARRAY_SIZE; j++) {
-	    a[j] = 1.0;
-	    b[j] = 2.0;
-	    c[j] = 0.0;
-    }
-
-    t = mysecond();
-    #pragma omp parallel for
-    for (j = 0; j < STREAM_ARRAY_SIZE; j++) a[j] = 2.0E0 * a[j];
-
-    t = 1.0E6 * (mysecond() - t);
+		t = mysecond();
+		#pragma omp parallel for
+		for (j = 0; j < stream_array_size; j++) a[j] = 2.0E0 * a[j];
+		t = 1.0E6 * (mysecond() - t);
     
     /*	--- MAIN LOOP --- repeat test cases NTIMES times --- */
+		scalar = 3.0;
+		//Copy
+		sprintf(region_tag, "COPY-%lld", stream_array_size);
+		for (k=0; k<NTIMES; k++){
+			times[0][k] = mysecond();
+			#pragma omp parallel 
+			{
+				LIKWID_MARKER_START(region_tag);
+				#pragma omp for
+				for (j=0; j<stream_array_size; j++) c[j] = a[j];
+				LIKWID_MARKER_STOP(region_tag);
+			}
+			times[0][k] = mysecond() - times[0][k];
+		}
 
-    scalar = 3.0;
+		//Scale
+		sprintf(region_tag, "SCALE-%lld", stream_array_size);
+		for (k=0; k<NTIMES; k++){
+			times[1][k] = mysecond();
+			#pragma omp parallel
+			{
+				LIKWID_MARKER_START(region_tag);
+				#pragma omp for
+				for (j=0; j<stream_array_size; j++) b[j] = scalar*c[j];
+				LIKWID_MARKER_STOP(region_tag);
+			}
+			times[1][k] = mysecond() - times[1][k];
+		}
 
-    for (k=0; k<NTIMES; k++){
-	times[0][k] = mysecond();
-	#ifdef TUNED
-            tuned_STREAM_Copy();
-	#else
-	    #pragma omp parallel 
-	    {
-  		#ifdef LIKWID_PERFMON
-	            LIKWID_MARKER_START("COPY");
-	            #pragma omp for
-	            for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j];
-		    LIKWID_MARKER_STOP("COPY");
-		#else
-		    for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j];
-		#endif
-            }
-	#endif
-	times[0][k] = mysecond() - times[0][k];
-    }
+		//Add
+		sprintf(region_tag, "ADD-%lld", stream_array_size);
+		for (k=0; k<NTIMES; k++){
+			times[2][k] = mysecond();
+			#pragma omp parallel
+			{
+				LIKWID_MARKER_START(region_tag);
+				#pragma omp for
+				for (j=0; j<stream_array_size; j++) c[j] = a[j]+b[j];
+				LIKWID_MARKER_STOP(region_tag);
+			}
+			times[2][k] = mysecond() - times[2][k];
+		}
 
-    for (k=0; k<NTIMES; k++){
-	times[1][k] = mysecond();
-	#ifdef TUNED
-            tuned_STREAM_Scale(scalar);
-	#else
-	    #pragma omp parallel
-	    {
-		#ifdef LIKWID_PERFMON
-	            LIKWID_MARKER_START("SCALE");
-	            #pragma omp for
-	            for (j=0; j<STREAM_ARRAY_SIZE; j++) b[j] = scalar*c[j];
-      		    LIKWID_MARKER_STOP("SCALE");
-		#else
-		    for (j=0; j<STREAM_ARRAY_SIZE; j++) b[j] = scalar*c[j];
-		#endif
-	    }
-	#endif
-	times[1][k] = mysecond() - times[1][k];
-    }
-
-    for (k=0; k<NTIMES; k++){
-	times[2][k] = mysecond();
-	#ifdef TUNED
-            tuned_STREAM_Add();
-	#else
-	    #pragma omp parallel
-	    {
-		#ifdef LIKWID_PERFMON
-                    LIKWID_MARKER_START("ADD");
-	            #pragma omp for
- 		    for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j]+b[j];
-	            LIKWID_MARKER_STOP("ADD");	
-		#else
-		    for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j]+b[j];
-		#endif
-	    }
-	#endif
-	times[2][k] = mysecond() - times[2][k];
-    }
-
-    for (k=0; k<NTIMES; k++){
-	times[3][k] = mysecond();
-	#ifdef TUNED
-            tuned_STREAM_Triad(scalar);
-	#else
-            #pragma omp parallel
-            {
-		#ifdef LIKWID_PERFMON
-                    LIKWID_MARKER_START("TRIAD");
-                    #pragma omp for
-	            for (j=0; j<STREAM_ARRAY_SIZE; j++) a[j] = b[j]+scalar*c[j];
-		    LIKWID_MARKER_STOP("TRIAD");
-		#else
-		    for (j=0; j<STREAM_ARRAY_SIZE; j++) a[j] = b[j]+scalar*c[j];
-		#endif
-	    }
-	#endif
-	times[3][k] = mysecond() - times[3][k];
-    }  
-
-    #ifdef LIKWID_PERFMON
-        LIKWID_MARKER_CLOSE;
-    #endif
-
-    /*	--- SUMMARY --- */
-    /* note -- skip first iteration */
-    for (k=1; k<NTIMES; k++){
-	for (j=0; j<4; j++){
-	    avgtime[j] = avgtime[j] + times[j][k];
-	    mintime[j] = MIN(mintime[j], times[j][k]);
-	    maxtime[j] = MAX(maxtime[j], times[j][k]);
+		//Triad
+		sprintf(region_tag, "TRIAD-%lld", stream_array_size);
+		for (k=0; k<NTIMES; k++){
+			times[3][k] = mysecond();
+			#pragma omp parallel
+			{
+				LIKWID_MARKER_START(region_tag);
+				#pragma omp for
+				for (j=0; j<stream_array_size; j++) a[j] = b[j]+scalar*c[j];
+				LIKWID_MARKER_STOP(region_tag);
+			}
+			times[3][k] = mysecond() - times[3][k];
+		}
+		
+		/*	--- SUMMARY --- */
+		/* note -- skip first iteration */
+		#pragma omp barrier
+		for (k=1; k<NTIMES; k++){
+			for (j=0; j<4; j++){
+				avgtime[j] = avgtime[j] + times[j][k];
+				mintime[j] = MIN(mintime[j], times[j][k]);
+				maxtime[j] = MAX(maxtime[j], times[j][k]);
+			}
+		}
+		printf("%s %12s %12s %8s %21s %13s %12s %12s\n", "Threads", "Array_Size", "N_Times", "Func", "Bandwidth", "Avg_time", "Min_time", "Max_time");
+		for (j=0; j<4; j++) {
+			avgtime[j] = avgtime[j]/(double)(NTIMES-1);
+			printf("%i %16llu %9d %20s %2.1f  %19.6f  %11.6f  %11.6f\n", num_threads, 
+			   stream_array_size, 
+			   NTIMES,
+			   label[j], 	
+			   1.0E-06 * bytes[j]/avgtime[j],
+			   avgtime[j],
+			   mintime[j],
+			   maxtime[j]);
+		}
 	}
-    }
-    
-    printf("%s %12s %12s %8s %21s %13s %12s %12s\n", "Threads", "Array_Size", "N_Times", "Func", "BW_MB/s", "Avg_time", "Min_time", "Max_time");
-    for (j=0; j<4; j++) {
-		avgtime[j] = avgtime[j]/(double)(NTIMES-1);
-
-		printf("%i %16llu %9d %20s %2.1f  %19.6f  %11.6f  %11.6f\n", num_threads, 
-	       STREAM_ARRAY_SIZE, 
-	       NTIMES,
-	       label[j], 	
-	       1.0E-06 * bytes[j]/mintime[j],
-	       avgtime[j],
-	       mintime[j],
-	       maxtime[j]);
-    }
-
+	
+    LIKWID_MARKER_CLOSE;
     return 0;
 }
 
@@ -406,159 +369,3 @@ double mysecond()
         return ( (double) tp.tv_sec + (double) tp.tv_usec * 1.e-6 );
 }
 
-#ifndef abs
-#define abs(a) ((a) >= 0 ? (a) : -(a))
-#endif
-void checkSTREAMresults ()
-{
-	STREAM_TYPE aj,bj,cj,scalar;
-	STREAM_TYPE aSumErr,bSumErr,cSumErr;
-	STREAM_TYPE aAvgErr,bAvgErr,cAvgErr;
-	double epsilon;
-	ssize_t	j;
-	int	k,ierr,err;
-
-    /* reproduce initialization */
-	aj = 1.0;
-	bj = 2.0;
-	cj = 0.0;
-    /* a[] is modified during timing check */
-	aj = 2.0E0 * aj;
-    /* now execute timing loop */
-	scalar = 3.0;
-	for (k=0; k<NTIMES; k++)
-        {
-            cj = aj;
-            bj = scalar*cj;
-            cj = aj+bj;
-            aj = bj+scalar*cj;
-        }
-
-    /* accumulate deltas between observed and expected results */
-	aSumErr = 0.0;
-	bSumErr = 0.0;
-	cSumErr = 0.0;
-	for (j=0; j<STREAM_ARRAY_SIZE; j++) {
-		aSumErr += abs(a[j] - aj);
-		bSumErr += abs(b[j] - bj);
-		cSumErr += abs(c[j] - cj);
-		// if (j == 417) printf("Index 417: c[j]: %f, cj: %f\n",c[j],cj);	// MCCALPIN
-	}
-	aAvgErr = aSumErr / (STREAM_TYPE) STREAM_ARRAY_SIZE;
-	bAvgErr = bSumErr / (STREAM_TYPE) STREAM_ARRAY_SIZE;
-	cAvgErr = cSumErr / (STREAM_TYPE) STREAM_ARRAY_SIZE;
-
-	if (sizeof(STREAM_TYPE) == 4) {
-		epsilon = 1.e-6;
-	}
-	else if (sizeof(STREAM_TYPE) == 8) {
-		epsilon = 1.e-13;
-	}
-	else {
-		printf("WEIRD: sizeof(STREAM_TYPE) = %lu\n",sizeof(STREAM_TYPE));
-		epsilon = 1.e-6;
-	}
-
-	err = 0;
-	if (abs(aAvgErr/aj) > epsilon) {
-		err++;
-		printf ("Failed Validation on array a[], AvgRelAbsErr > epsilon (%e)\n",epsilon);
-		printf ("     Expected Value: %e, AvgAbsErr: %e, AvgRelAbsErr: %e\n",aj,aAvgErr,abs(aAvgErr)/aj);
-		ierr = 0;
-		for (j=0; j<STREAM_ARRAY_SIZE; j++) {
-			if (abs(a[j]/aj-1.0) > epsilon) {
-				ierr++;
-#ifdef VERBOSE
-				if (ierr < 10) {
-					printf("         array a: index: %ld, expected: %e, observed: %e, relative error: %e\n",
-						j,aj,a[j],abs((aj-a[j])/aAvgErr));
-				}
-#endif
-			}
-		}
-		printf("     For array a[], %d errors were found.\n",ierr);
-	}
-	if (abs(bAvgErr/bj) > epsilon) {
-		err++;
-		printf ("Failed Validation on array b[], AvgRelAbsErr > epsilon (%e)\n",epsilon);
-		printf ("     Expected Value: %e, AvgAbsErr: %e, AvgRelAbsErr: %e\n",bj,bAvgErr,abs(bAvgErr)/bj);
-		printf ("     AvgRelAbsErr > Epsilon (%e)\n",epsilon);
-		ierr = 0;
-		for (j=0; j<STREAM_ARRAY_SIZE; j++) {
-			if (abs(b[j]/bj-1.0) > epsilon) {
-				ierr++;
-#ifdef VERBOSE
-				if (ierr < 10) {
-					printf("         array b: index: %ld, expected: %e, observed: %e, relative error: %e\n",
-						j,bj,b[j],abs((bj-b[j])/bAvgErr));
-				}
-#endif
-			}
-		}
-		printf("     For array b[], %d errors were found.\n",ierr);
-	}
-	if (abs(cAvgErr/cj) > epsilon) {
-		err++;
-		printf ("Failed Validation on array c[], AvgRelAbsErr > epsilon (%e)\n",epsilon);
-		printf ("     Expected Value: %e, AvgAbsErr: %e, AvgRelAbsErr: %e\n",cj,cAvgErr,abs(cAvgErr)/cj);
-		printf ("     AvgRelAbsErr > Epsilon (%e)\n",epsilon);
-		ierr = 0;
-		for (j=0; j<STREAM_ARRAY_SIZE; j++) {
-			if (abs(c[j]/cj-1.0) > epsilon) {
-				ierr++;
-#ifdef VERBOSE
-				if (ierr < 10) {
-					printf("         array c: index: %ld, expected: %e, observed: %e, relative error: %e\n",
-						j,cj,c[j],abs((cj-c[j])/cAvgErr));
-				}
-#endif
-			}
-		}
-		printf("     For array c[], %d errors were found.\n",ierr);
-	}
-	if (err == 0) {
-		printf ("Solution Validates: avg error less than %e on all three arrays\n",epsilon);
-	}
-#ifdef VERBOSE
-	printf ("Results Validation Verbose Results: \n");
-	printf ("    Expected a(1), b(1), c(1): %f %f %f \n",aj,bj,cj);
-	printf ("    Observed a(1), b(1), c(1): %f %f %f \n",a[1],b[1],c[1]);
-	printf ("    Rel Errors on a, b, c:     %e %e %e \n",abs(aAvgErr/aj),abs(bAvgErr/bj),abs(cAvgErr/cj));
-#endif
-}
-
-#ifdef TUNED
-/* stubs for "tuned" versions of the kernels */
-void tuned_STREAM_Copy()
-{
-	ssize_t j;
-#pragma omp parallel for
-        for (j=0; j<STREAM_ARRAY_SIZE; j++)
-            c[j] = a[j];
-}
-
-void tuned_STREAM_Scale(STREAM_TYPE scalar)
-{
-	ssize_t j;
-#pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    b[j] = scalar*c[j];
-}
-
-void tuned_STREAM_Add()
-{
-	ssize_t j;
-#pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    c[j] = a[j]+b[j];
-}
-
-void tuned_STREAM_Triad(STREAM_TYPE scalar)
-{
-	ssize_t j;
-#pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    a[j] = b[j]+scalar*c[j];
-}
-/* end of stubs for the "tuned" versions of the kernels */
-#endif

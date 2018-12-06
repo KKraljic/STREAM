@@ -1,17 +1,20 @@
 #!/bin/bash
 
-#SBATCH -o ./baseline-28-threads.txt
+#SBATCH -o ./caches-out.txt
 #SBATCH -D .
 
 #SBATCH -J LIKWID-K
 #SBATCH --get-user-env
 #SBATCH --clusters=mpp2
 #SBATCH --export=NONE
-#SBATCH --time=00:59:00
+#SBATCH --time=00:30:00
 
 # LOAD MODULE
 module load mpi.intel
-
+module load likwid/4.3
+AMOUNT_THREADS=28
+ARRAY_SIZE=128
+export OMP_NUM_THREADS=$AMOUNT_THREADS
 echo '======================================================='
 echo '===========Starting Baselines=========================='
 echo '======================================================='
@@ -22,15 +25,8 @@ echo ''
 echo ''
 echo ''
 echo '-----> Baseline ICC:'
-AMOUNT_THREADS=28
-export OMP_NUM_THREADS=$AMOUNT_THREADS
-ARRAY_SIZE=1
-while [  $ARRAY_SIZE -lt 10000000 ]; 
-do
-  	~/compilations/icc/$ARRAY_SIZE/10/stream_c.exe
-       	let ARRAY_SIZE=ARRAY_SIZE+20000
-done
-
+likwid-perfctr -g CACHES -execpid -C 0-27 -m icc/stream_c.exe -s $ARRAY_SIZE > results/icc_caches.out
+echo ''
 module unload mpi.intel
 module load gcc
 echo ''
@@ -40,11 +36,6 @@ echo ''
 echo ''
 echo ''
 echo '-----> Baseline GCC:'
-export OMP_NUM_THREADS=$AMOUNT_THREADS
-ARRAY_SIZE=1
-while [  $ARRAY_SIZE -lt 10000000 ]; 
-do
-	~/compilations/gcc/$ARRAY_SIZE/10/stream_c.exe
-        let ARRAY_SIZE=ARRAY_SIZE+20000
-done
+likwid-perfctr -g CACHES -execpid -C 0-27 -m gcc/stream_c.exe -s $ARRAY_SIZE > results/gcc_caches.out
+
 
