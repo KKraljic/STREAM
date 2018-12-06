@@ -7,14 +7,14 @@ ARRAY_SIZE=1
 while [  $ARRAY_SIZE -lt 67000000 ]; 
 do
         ./compile.sh -c icc -a $ARRAY_SIZE -n 10
-        let ARRAY_SIZE=ARRAY_SIZE+1000000
+        let ARRAY_SIZE=ARRAY_SIZE+200000
 done
 ARRAY_SIZE=1
 while [  $ARRAY_SIZE -lt 67000000 ]; 
 do
 
         ./compile.sh -c gcc -a $ARRAY_SIZE -n 10
-        let ARRAY_SIZE=ARRAY_SIZE+1000000
+        let ARRAY_SIZE=ARRAY_SIZE+200000
 done
 ARRAY_SIZE=1
 while [  $ARRAY_SIZE -lt 26 ]; 

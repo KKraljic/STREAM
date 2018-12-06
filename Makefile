@@ -7,7 +7,7 @@ ifndef N_AMOUNT
 endif
 
 CFLAGS = -O2 -fopenmp -DSTREAM_ARRAY_SIZE=$(A_SIZE) -DNTIMES=$(N_AMOUNT) 
-#LFLAGS = -DLIKWID_PERFMON -I/lrz/sys/tools/likwid/likwid-4.3.2/include -L/lrz/sys/tools/likwid/likwid-4.3.2/lib -llikwid -lm
+LFLAGS = -DLIKWID_PERFMON -I/lrz/sys/tools/likwid/likwid-4.3.2/include -L/lrz/sys/tools/likwid/likwid-4.3.2/lib -llikwid -lm
 
 all: stream_f.exe stream_c.exe
 

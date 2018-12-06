@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#SBATCH -o ./final-likwid-output.txt
+#SBATCH -o ./likwid-output.txt
 #SBATCH -D .
 
 #SBATCH -J LIKWID-K
 #SBATCH --get-user-env
 #SBATCH --clusters=mpp2
 #SBATCH --export=NONE
-#SBATCH --time=03:00:00
+#SBATCH --time=02:00:00
 
 # LOAD MODULE
 module load mpi.intel
@@ -26,26 +26,72 @@ echo '-----> Meta information:'
 module list
 echo '-----> Benchmark Output:'
 AMOUNT_THREADS=1
-while [  $AMOUNT_THREADS -lt 29 ];
+export OMP_NUM_THREADS=$AMOUNT_THREADS
+ARRAY_SIZE=1
+while [  $ARRAY_SIZE -lt 26 ]; 
 do
-	export OMP_NUM_THREADS=$AMOUNT_THREADS
-	ARRAY_SIZE=1
-	while [  $ARRAY_SIZE -lt 26 ]; 
-	do
-		N_ITERATIONS=4
-	        while [  $N_ITERATIONS -lt 5 ]; 
-	        do
-        	        ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
-			likwid-perfctr ${DATA_FLAGS1} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
-			#likwid-perfctr ${DATA_FLAGS2} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
-			#likwid-perfctr ${DATA_FLAGS3} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
-			#likwid-perfctr ${DATA_FLAGS4} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+	N_ITERATIONS=4
+        while [  $N_ITERATIONS -lt 5 ]; 
+        do
+		likwid-perfctr ${DATA_FLAGS1} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+		#likwid-perfctr ${DATA_FLAGS2} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+		likwid-perfctr ${DATA_FLAGS3} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+		#likwid-perfctr ${DATA_FLAGS4} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
 
-	                let N_ITERATIONS=N_ITERATIONS+1
-        	done
-	        let ARRAY_SIZE=ARRAY_SIZE+1
-	done
-	let AMOUNT_THREADS=AMOUNT_THREADS+1
+                let N_ITERATIONS=N_ITERATIONS+1
+       	done
+        let ARRAY_SIZE=ARRAY_SIZE+1
+done
+AMOUNT_THREADS=14
+export OMP_NUM_THREADS=$AMOUNT_THREADS
+ARRAY_SIZE=1
+while [  $ARRAY_SIZE -lt 26 ]; 
+do
+        N_ITERATIONS=4
+        while [  $N_ITERATIONS -lt 5 ]; 
+        do
+                likwid-perfctr ${DATA_FLAGS1} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS2} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                likwid-perfctr ${DATA_FLAGS3} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS4} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+
+                let N_ITERATIONS=N_ITERATIONS+1
+        done
+        let ARRAY_SIZE=ARRAY_SIZE+1
+done
+AMOUNT_THREADS=15
+export OMP_NUM_THREADS=$AMOUNT_THREADS
+ARRAY_SIZE=1
+while [  $ARRAY_SIZE -lt 26 ]; 
+do
+        N_ITERATIONS=10
+        while [  $N_ITERATIONS -lt 11 ]; 
+        do
+                likwid-perfctr ${DATA_FLAGS1} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS2} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                likwid-perfctr ${DATA_FLAGS3} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS4} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+
+                let N_ITERATIONS=N_ITERATIONS+1
+        done
+        let ARRAY_SIZE=ARRAY_SIZE+1
+done
+AMOUNT_THREADS=28
+export OMP_NUM_THREADS=$AMOUNT_THREADS
+ARRAY_SIZE=1
+while [  $ARRAY_SIZE -lt 26 ]; 
+do
+        N_ITERATIONS=10
+        while [  $N_ITERATIONS -lt 11 ]; 
+        do
+                likwid-perfctr ${DATA_FLAGS1} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS2} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                likwid-perfctr ${DATA_FLAGS3} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS4} -execpid -C ${THREAD_PIN} -m ~/compilations/icc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+
+                let N_ITERATIONS=N_ITERATIONS+1
+        done
+        let ARRAY_SIZE=ARRAY_SIZE+1
 done
 echo ''
 echo ''
@@ -61,25 +107,69 @@ echo ''
 echo ''
 echo '-----> Benchmark Output'
 AMOUNT_THREADS=1
-while [  $AMOUNT_THREADS -lt 29 ];
+export OMP_NUM_THREADS=$AMOUNT_THREADS
+ARRAY_SIZE=1
+while [  $ARRAY_SIZE -lt 26 ]; 
 do
-	export OMP_NUM_THREADS=$AMOUNT_THREADS
-	ARRAY_SIZE=1
-	while [  $ARRAY_SIZE -lt 26 ]; 
+	N_ITERATIONS=10
+	while [  $N_ITERATIONS -lt 11 ]; 
 	do
-		N_ITERATIONS=4
-		while [  $N_ITERATIONS -lt 5 ]; 
-		do
-			~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
-			likwid-perfctr ${DATA_FLAGS1} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
-			#likwid-perfctr ${DATA_FLAGS2} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
-                        #likwid-perfctr ${DATA_FLAGS3} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
-                        #likwid-perfctr ${DATA_FLAGS4} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
-
-			let N_ITERATIONS=N_ITERATIONS+1
-		done
-		let ARRAY_SIZE=ARRAY_SIZE+1
+		likwid-perfctr ${DATA_FLAGS1} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+		#likwid-perfctr ${DATA_FLAGS2} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                likwid-perfctr ${DATA_FLAGS3} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS4} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+		let N_ITERATIONS=N_ITERATIONS+1
 	done
-	let AMOUNT_THREADS=AMOUNT_THREADS+1
+let ARRAY_SIZE=ARRAY_SIZE+1
 done
+AMOUNT_THREADS=14
+export OMP_NUM_THREADS=$AMOUNT_THREADS
+ARRAY_SIZE=1
+while [  $ARRAY_SIZE -lt 26 ]; 
+do
+        N_ITERATIONS=10
+        while [  $N_ITERATIONS -lt 11 ]; 
+        do
+                likwid-perfctr ${DATA_FLAGS1} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS2} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                likwid-perfctr ${DATA_FLAGS3} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS4} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                let N_ITERATIONS=N_ITERATIONS+1
+        done
+let ARRAY_SIZE=ARRAY_SIZE+1
+done
+AMOUNT_THREADS=15
+export OMP_NUM_THREADS=$AMOUNT_THREADS
+ARRAY_SIZE=1
+while [  $ARRAY_SIZE -lt 26 ]; 
+do
+        N_ITERATIONS=10
+        while [  $N_ITERATIONS -lt 11 ]; 
+        do
+                likwid-perfctr ${DATA_FLAGS1} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS2} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                likwid-perfctr ${DATA_FLAGS3} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS4} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                let N_ITERATIONS=N_ITERATIONS+1
+        done
+let ARRAY_SIZE=ARRAY_SIZE+1
+done
+AMOUNT_THREADS=28
+export OMP_NUM_THREADS=$AMOUNT_THREADS
+ARRAY_SIZE=1
+while [  $ARRAY_SIZE -lt 26 ]; 
+do
+        N_ITERATIONS=10
+        while [  $N_ITERATIONS -lt 11 ]; 
+        do
+                likwid-perfctr ${DATA_FLAGS1} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS2} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                likwid-perfctr ${DATA_FLAGS3} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                #likwid-perfctr ${DATA_FLAGS4} -execpid -C ${THREAD_PIN} -m ~/compilations/gcc/$((2**$ARRAY_SIZE))/$((2**N_ITERATIONS))/stream_c.exe
+                let N_ITERATIONS=N_ITERATIONS+1
+        done
+let ARRAY_SIZE=ARRAY_SIZE+1
+done
+
+
 
