@@ -13,7 +13,7 @@
 module load mpi.intel
 module load likwid/4.3
 AMOUNT_THREADS=28
-ARRAY_SIZE=128
+ARRAY_SIZE=60
 export OMP_NUM_THREADS=$AMOUNT_THREADS
 echo '======================================================='
 echo '===========Starting Baselines=========================='
