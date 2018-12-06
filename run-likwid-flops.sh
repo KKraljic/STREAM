@@ -25,7 +25,7 @@ echo ''
 echo ''
 echo ''
 echo '-----> Baseline ICC:'
-likwid-perfctr -g FLOPS_AVX -execpid -C 0-27 -m icc/stream_c.exe -s $ARRAY_SIZE > results/icc_flops.out
+likwid-perfctr -g FLOPS_AVX -execpid -C 0-27 -O -m icc/stream_c.exe -s $ARRAY_SIZE > results/icc_flops.out
 echo ''
 module unload mpi.intel
 module load gcc
@@ -36,6 +36,6 @@ echo ''
 echo ''
 echo ''
 echo '-----> Baseline GCC:'
-likwid-perfctr -g FLOPS_AVX -execpid -C 0-27 -m gcc/stream_c.exe -s $ARRAY_SIZE > results/gcc_flops.out
+likwid-perfctr -g FLOPS_AVX -execpid -C 0-27 -O -m gcc/stream_c.exe -s $ARRAY_SIZE > results/gcc_flops.out
 
 
