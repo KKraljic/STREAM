@@ -75,26 +75,8 @@
  *               If the chip is capable of 10 GB/s, it moves 2 GB in 200 msec.
  *               This means the each array must be at least 1 GB, or 128M elements.
  *
- *      Version 5.10 increases the default array size from 2 million
- *          elements to 10 million elements in response to the increasing
- *          size of L3 caches.  The new default size is large enough for caches
- *          up to 20 MB. 
- *      Version 5.10 changes the loop index variables from "register int"
- *          to "ssize_t", which allows array indices >2^32 (4 billion)
- *          on properly configured 64-bit systems.  Additional compiler options
- *          (such as "-mcmodel=medium") may be required for large memory runs.
- *
  */
 
-/*  2) STREAM runs each kernel "NTIMES" times and reports the *best* result
- *         for any iteration after the first, therefore the minimum value
- *         for NTIMES is 2.
- *      There are no rules on maximum allowable values for NTIMES, but
- *         values larger than the default are unlikely to noticeably
- *         increase the reported performance.
- *      NTIMES can also be set on the compile line without changing the source
- *         code using, for example, "-DNTIMES=7".
- */
 #ifdef NTIMES
 	#if NTIMES<=1
 	#   define NTIMES	30
@@ -103,45 +85,6 @@
 #ifndef NTIMES
 #   define NTIMES	30
 #endif
-
-/*
- *	3) Compile the code with optimization.  Many compilers generate
- *       unreasonably bad code before the optimizer tightens things up.  
- *     If the results are unreasonably good, on the other hand, the
- *       optimizer might be too smart for me!
- *
- *     For a simple single-core version, try compiling with:
- *            cc -O stream.c -o stream
- *     This is known to work on many, many systems....
- *
- *     To use multiple cores, you need to tell the compiler to obey the OpenMP
- *       directives in the code.  This varies by compiler, but a common example is
- *            gcc -O -fopenmp stream.c -o stream_omp
- *       The environment variable OMP_NUM_THREADS allows runtime control of the 
- *         number of threads/cores used when the resulting "stream_omp" program
- *         is executed.
- *
- *     To run with single-precision variables and arithmetic, simply add
- *         -DSTREAM_TYPE=float
- *     to the compile line.
- *     Note that this changes the minimum array sizes required --- see (1) above.
- *
- *     The preprocessor directive "TUNED" does not do much -- it simply causes the 
- *       code to call separate functions to execute each kernel.  Trivial versions
- *       of these functions are provided, but they are *not* tuned -- they just 
- *       provide predefined interfaces to be replaced with tuned code.
- *
- *
- *	4) Optional: Mail the results to mccalpin@cs.virginia.edu
- *	   Be sure to include info that will help me understand:
- *		a) the computer hardware configuration (e.g., processor model, memory type)
- *		b) the compiler name/version and compilation flags
- *      c) any run-time information (such as OMP_NUM_THREADS)
- *		d) all of the output from the test case.
- *
- * Thanks!
- *
- *-----------------------------------------------------------------------*/
 
 # define HLINE "-------------------------------------------------------------\n"
 
