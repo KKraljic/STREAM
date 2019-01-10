@@ -77,15 +77,6 @@
  *
  */
 
-#ifdef NTIMES
-	#if NTIMES<=1
-	#   define NTIMES	30
-	#endif
-#endif
-#ifndef NTIMES
-#   define NTIMES	30
-#endif
-
 # define HLINE "-------------------------------------------------------------\n"
 
 # ifndef MIN
@@ -114,10 +105,12 @@ int main(int argc, char **argv){
 	int temp, array_power = 18, offset = 0, size_iterator;
 	ssize_t max_array_size, stream_array_size;
 	
+	ssize_t n_times = 10; //TODO: set this value
+	
 	int checktick(), k;
 	ssize_t j;
 	STREAM_TYPE scalar;
-	double t, times[4][NTIMES];
+	double t, times[4][n_times];
     	int num_threads = 0;
 	char region_tag[80];//80 is an arbitratry number; large enough to keep the tags...
 	
@@ -181,12 +174,13 @@ int main(int argc, char **argv){
 		scalar = 3.0;
 		//Copy
 		sprintf(region_tag, "COPY-%lld", stream_array_size);
-		for (k=0; k<NTIMES; k++){
+		
+		for (k=0; k<n_times; k++){
 			times[0][k] = mysecond();
 			#pragma omp parallel 
 			{
 				LIKWID_MARKER_START(region_tag);
-				#pragma omp for
+				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) c[j] = a[j];
 				LIKWID_MARKER_STOP(region_tag);
 			}
@@ -195,12 +189,12 @@ int main(int argc, char **argv){
 
 		//Scale
 		sprintf(region_tag, "SCALE-%lld", stream_array_size);
-		for (k=0; k<NTIMES; k++){
+		for (k=0; k<n_times; k++){
 			times[1][k] = mysecond();
 			#pragma omp parallel
 			{
 				LIKWID_MARKER_START(region_tag);
-				#pragma omp for
+				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) b[j] = scalar*c[j];
 				LIKWID_MARKER_STOP(region_tag);
 			}
@@ -209,12 +203,12 @@ int main(int argc, char **argv){
 
 		//Add
 		sprintf(region_tag, "ADD-%lld", stream_array_size);
-		for (k=0; k<NTIMES; k++){
+		for (k=0; k<n_times; k++){
 			times[2][k] = mysecond();
 			#pragma omp parallel
 			{
 				LIKWID_MARKER_START(region_tag);
-				#pragma omp for
+				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) c[j] = a[j]+b[j];
 				LIKWID_MARKER_STOP(region_tag);
 			}
@@ -223,12 +217,12 @@ int main(int argc, char **argv){
 
 		//Triad
 		sprintf(region_tag, "TRIAD-%lld", stream_array_size);
-		for (k=0; k<NTIMES; k++){
+		for (k=0; k<n_times; k++){
 			times[3][k] = mysecond();
 			#pragma omp parallel
 			{
 				LIKWID_MARKER_START(region_tag);
-				#pragma omp for
+				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) a[j] = b[j]+scalar*c[j];
 				LIKWID_MARKER_STOP(region_tag);
 			}
@@ -238,7 +232,7 @@ int main(int argc, char **argv){
 		/*	--- SUMMARY --- */
 		/* note -- skip first iteration */
 		#pragma omp barrier
-		for (k=1; k<NTIMES; k++){
+		for (k=1; k<n_times; k++){
 			for (j=0; j<4; j++){
 				avgtime[j] = avgtime[j] + times[j][k];
 				mintime[j] = MIN(mintime[j], times[j][k]);
@@ -247,10 +241,10 @@ int main(int argc, char **argv){
 		}
 		printf("%s %12s %12s %8s %21s %13s %12s %12s\n", "Threads", "Array_Size", "N_Times", "Func", "Bandwidth", "Avg_time", "Min_time", "Max_time");
 		for (j=0; j<4; j++) {
-			avgtime[j] = avgtime[j]/(double)(NTIMES-1);
+			avgtime[j] = avgtime[j]/(double)(n_times-1);
 			printf("%i %16llu %9d %20s %2.1f  %19.6f  %11.6f  %11.6f\n", num_threads, 
 			   stream_array_size, 
-			   NTIMES,
+			   n_times,
 			   label[j], 	
 			   1.0E-06 * bytes[j]/avgtime[j],
 			   avgtime[j],
