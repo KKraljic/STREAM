@@ -102,20 +102,14 @@ extern int omp_get_num_threads();
 
 
 int main(int argc, char **argv){
-	int temp, array_power = 18, offset = 0, size_iterator;
-	ssize_t max_array_size, stream_array_size;
-	
-	ssize_t n_times = 10; //TODO: set this value
-	
-	int checktick(), k;
-	ssize_t j;
+	int checktick();
+	int temp, array_power = 18, offset = 0, num_threads = 0;
+	ssize_t stream_array_size, n_times = 10, j, k, count; 
 	STREAM_TYPE scalar;
-	double t, times[4][n_times];
-    	int num_threads = 0;
+
 	char region_tag[80];//80 is an arbitratry number; large enough to keep the tags...
 	
-	
-	while ((temp = getopt (argc, argv, "s:o:")) != -1){
+	while ((temp = getopt (argc, argv, "s:o:n:")) != -1){
 		switch (temp){
 		  case 's':
 			array_power = atoi(optarg);
@@ -123,12 +117,16 @@ int main(int argc, char **argv){
 		  case 'o':
 			offset = atoi(optarg);
 			break;
+		  case 'n':
+			n_times = (ssize_t) pow(2, atoi(optarg) + 0.5);
+			break;
 		  default:
 			printf("Invalid arguments. Aborting.");
 			exit(1);
 		 }
 	}
 	
+	double t, times[4][n_times];
 
 	LIKWID_MARKER_INIT;
         #pragma omp parallel
@@ -136,21 +134,19 @@ int main(int argc, char **argv){
         	LIKWID_MARKER_THREADINIT;
         }
 
-
 	#pragma omp parallel shared(num_threads)
 	{
 		#pragma omp atomic 
 		num_threads++;
 	}
    
-	max_array_size = (ssize_t) (pow(2, array_power) + 0.5);
-	int count = 1;
-	for(stream_array_size=1; stream_array_size<max_array_size; stream_array_size = (ssize_t) (pow(2, count) + 0.5)){
-		count++;
-		STREAM_TYPE	a[stream_array_size+offset],
-				b[stream_array_size+offset],
-				c[stream_array_size+offset];
-				
+	ssize_t max_array_size = (ssize_t) (pow(2, array_power) + 0.5);
+	STREAM_TYPE a[max_array_size+offset], b[max_array_size+offset], c[max_array_size+offset];
+	
+	for(count=1; count<array_power; count++){
+		stream_array_size = (ssize_t) (pow(2, count) + 0.5);
+		printf("Array_size:\t%ld\n", stream_array_size);
+		
 		double	bytes[4] = {
 			2 * sizeof(STREAM_TYPE) * stream_array_size,
 			2 * sizeof(STREAM_TYPE) * stream_array_size,
@@ -169,12 +165,12 @@ int main(int argc, char **argv){
 		#pragma omp parallel for
 		for (j = 0; j < stream_array_size; j++) a[j] = 2.0E0 * a[j];
 		t = 1.0E6 * (mysecond() - t);
+		
     
-    /*	--- MAIN LOOP --- repeat test cases NTIMES times --- */
+		/*--- MAIN LOOP --- repeat test cases NTIMES times --- */
 		scalar = 3.0;
 		//Copy
-		sprintf(region_tag, "COPY-%lld", stream_array_size);
-		
+		sprintf(region_tag, "COPY-%ld", stream_array_size);
 		for (k=0; k<n_times; k++){
 			times[0][k] = mysecond();
 			#pragma omp parallel 
@@ -188,7 +184,7 @@ int main(int argc, char **argv){
 		}
 
 		//Scale
-		sprintf(region_tag, "SCALE-%lld", stream_array_size);
+		sprintf(region_tag, "SCALE-%ld", stream_array_size);
 		for (k=0; k<n_times; k++){
 			times[1][k] = mysecond();
 			#pragma omp parallel
@@ -202,7 +198,7 @@ int main(int argc, char **argv){
 		}
 
 		//Add
-		sprintf(region_tag, "ADD-%lld", stream_array_size);
+		sprintf(region_tag, "ADD-%ld", stream_array_size);
 		for (k=0; k<n_times; k++){
 			times[2][k] = mysecond();
 			#pragma omp parallel
@@ -216,7 +212,7 @@ int main(int argc, char **argv){
 		}
 
 		//Triad
-		sprintf(region_tag, "TRIAD-%lld", stream_array_size);
+		sprintf(region_tag, "TRIAD-%ld", stream_array_size);
 		for (k=0; k<n_times; k++){
 			times[3][k] = mysecond();
 			#pragma omp parallel
@@ -228,7 +224,6 @@ int main(int argc, char **argv){
 			}
 			times[3][k] = mysecond() - times[3][k];
 		}
-		
 		/*	--- SUMMARY --- */
 		/* note -- skip first iteration */
 		#pragma omp barrier
@@ -239,10 +234,10 @@ int main(int argc, char **argv){
 				maxtime[j] = MAX(maxtime[j], times[j][k]);
 			}
 		}
-		printf("%s %12s %12s %8s %21s %13s %12s %12s\n", "Threads", "Array_Size", "N_Times", "Func", "Bandwidth", "Avg_time", "Min_time", "Max_time");
+		printf("%s %12s %12s %8s %21s %13s %12s %12s\n", "Threads", "Arr_Size", "NTimes", "Func", "Avrg_BW_[MB/s]", "Avg_time", "Min_time", "Max_time");
 		for (j=0; j<4; j++) {
 			avgtime[j] = avgtime[j]/(double)(n_times-1);
-			printf("%i %16llu %9d %20s %2.1f  %19.6f  %11.6f  %11.6f\n", num_threads, 
+			printf("%i %16lu %9ld %20s %2.1f  %19.6f  %11.6f  %11.6f\n", num_threads, 
 			   stream_array_size, 
 			   n_times,
 			   label[j], 	
@@ -300,9 +295,8 @@ double mysecond()
 {
         struct timeval tp;
         struct timezone tzp;
-        int i;
 
-        i = gettimeofday(&tp,&tzp);
+        gettimeofday(&tp,&tzp);
         return ( (double) tp.tv_sec + (double) tp.tv_usec * 1.e-6 );
 }
 
