@@ -145,8 +145,6 @@ int main(int argc, char **argv){
 	
 	for(count=1; count<array_power; count++){
 		stream_array_size = (ssize_t) (pow(2, count) + 0.5);
-		printf("Array_size:\t%ld\n", stream_array_size);
-		
 		double	bytes[4] = {
 			2 * sizeof(STREAM_TYPE) * stream_array_size,
 			2 * sizeof(STREAM_TYPE) * stream_array_size,
@@ -170,59 +168,59 @@ int main(int argc, char **argv){
 		/*--- MAIN LOOP --- repeat test cases NTIMES times --- */
 		scalar = 3.0;
 		//Copy
-		sprintf(region_tag, "COPY-%ld", stream_array_size);
+		sprintf(region_tag, "COPY-%ld-NTIMES-%ld", stream_array_size, n_times);
 		#pragma omp parallel
 		{
+			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
 				times[0][k] = mysecond();
-				LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) c[j] = a[j];
-				LIKWID_MARKER_STOP(region_tag);
 				times[0][k] = mysecond() - times[0][k];
 			}
+			LIKWID_MARKER_STOP(region_tag);
 		}
 
 		//Scale
-		sprintf(region_tag, "SCALE-%ld", stream_array_size);
+		sprintf(region_tag, "SCALE-%ld-NTIMES-%ld", stream_array_size, n_times);
 		#pragma omp parallel
 		{
+			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
 				times[1][k] = mysecond();
-				LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) b[j] = scalar*c[j];
-				LIKWID_MARKER_STOP(region_tag);
 				times[1][k] = mysecond() - times[1][k];
 			}
+			LIKWID_MARKER_STOP(region_tag);
 		}
 
 		//Add
-		sprintf(region_tag, "ADD-%ld", stream_array_size);
+		sprintf(region_tag, "ADD-%ld-NTIMES-%ld", stream_array_size, n_times);
 		#pragma omp parallel
 		{
+			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
 				times[2][k] = mysecond();
-				LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) c[j] = a[j]+b[j];
-				LIKWID_MARKER_STOP(region_tag);
 				times[2][k] = mysecond() - times[2][k];
 			}
+			LIKWID_MARKER_STOP(region_tag);
 		}
 
 		//Triad
-		sprintf(region_tag, "TRIAD-%ld", stream_array_size);
+		sprintf(region_tag, "TRIAD-%ld-NTIMES-%ld", stream_array_size, n_times);
 		#pragma omp parallel
 		{
+			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
 				times[3][k] = mysecond();
-				LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) a[j] = b[j]+scalar*c[j];
-				LIKWID_MARKER_STOP(region_tag);
 				times[3][k] = mysecond() - times[3][k];
 			}
+			LIKWID_MARKER_STOP(region_tag);
 		}
 		/*	--- SUMMARY --- */
 		/* note -- skip first iteration */
