@@ -193,10 +193,7 @@ int main(int argc, char **argv){
 					minimum = thread_local_times[tid][k];
 				}
 			}
-			if(minimum != DBL_MAX) times[0][k] = minimum;
-		}
-		for(k=0; k<n_times; k++){
-			 printf("Final time at %ld is: %f\n", k, times[0][k]);
+			times[0][k] = minimum;
 		}
 
 		//Scale
@@ -213,6 +210,17 @@ int main(int argc, char **argv){
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
+		#pragma omp barrier
+                for(k=0; k<n_times; k++){
+                        double minimum = DBL_MAX;
+                        for(tid=0; tid<num_threads; tid++){
+                                if(minimum > thread_local_times[tid][k]){
+                                        minimum = thread_local_times[tid][k];
+                                }
+                        }
+                        times[1][k] = minimum;
+                }
+
 
 		//Add
 		sprintf(region_tag, "ADD-%ld-NTIMES-%ld", stream_array_size, n_times);
@@ -228,6 +236,17 @@ int main(int argc, char **argv){
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
+		#pragma omp barrier
+                for(k=0; k<n_times; k++){
+                        double minimum = DBL_MAX;
+                        for(tid=0; tid<num_threads; tid++){
+                                if(minimum > thread_local_times[tid][k]){
+                                        minimum = thread_local_times[tid][k];
+                                }
+                        }
+                        times[2][k] = minimum;
+                }
+
 
 		//Triad
 		sprintf(region_tag, "TRIAD-%ld-NTIMES-%ld", stream_array_size, n_times);
@@ -243,6 +262,17 @@ int main(int argc, char **argv){
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
+		#pragma omp barrier
+                for(k=0; k<n_times; k++){
+                        double minimum = DBL_MAX;
+                        for(tid=0; tid<num_threads; tid++){
+                                if(minimum > thread_local_times[tid][k]){
+                                        minimum = thread_local_times[tid][k];
+                                }
+                        }
+                        times[3][k] = minimum;
+                }
+
 		/*	--- SUMMARY --- */
 		/* note -- skip first iteration */
 		#pragma omp barrier
