@@ -106,6 +106,19 @@ int main(int argc, char **argv){
 	int temp, array_power = 18, offset = 0, num_threads = 0;
 	ssize_t stream_array_size, n_times = 10, j, k, count; 
 	STREAM_TYPE scalar;
+	
+	LIKWID_MARKER_INIT;
+        #pragma omp parallel
+        {
+                LIKWID_MARKER_THREADINIT;
+        }
+
+        #pragma omp parallel shared(num_threads)
+        {
+                #pragma omp atomic 
+                num_threads++;
+        }
+
 
 	char region_tag[80];//80 is an arbitratry number; large enough to keep the tags...
 	
@@ -128,18 +141,6 @@ int main(int argc, char **argv){
 	
 	double t, times[4][n_times];
 
-	LIKWID_MARKER_INIT;
-        #pragma omp parallel
-        {
-        	LIKWID_MARKER_THREADINIT;
-        }
-
-	#pragma omp parallel shared(num_threads)
-	{
-		#pragma omp atomic 
-		num_threads++;
-	}
-   
 	ssize_t max_array_size = (ssize_t) (pow(2, array_power) + 0.5);
 	STREAM_TYPE a[max_array_size+offset], b[max_array_size+offset], c[max_array_size+offset];
 	
