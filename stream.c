@@ -203,10 +203,10 @@ int main(int argc, char **argv){
 			int tid = omp_get_thread_num();
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				times[1][k] = mysecond();
+				thread_local_times[tid][k] = mysecond();
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) b[j] = scalar*c[j];
-				times[1][k] = mysecond() - times[1][k];
+				thread_local_times[tid][k] = mysecond() - thread_local_times[tid][k];
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
@@ -229,10 +229,10 @@ int main(int argc, char **argv){
 			int tid = omp_get_thread_num();
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				times[2][k] = mysecond();
+				thread_local_times[tid][k] = mysecond();
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) c[j] = a[j]+b[j];
-				times[2][k] = mysecond() - times[2][k];
+				thread_local_times[tid][k] = mysecond() - thread_local_times[tid][k];
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
@@ -255,10 +255,10 @@ int main(int argc, char **argv){
 			int tid = omp_get_thread_num();
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				times[3][k] = mysecond();
+				thread_local_times[tid][k] = mysecond();
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) a[j] = b[j]+scalar*c[j];
-				times[3][k] = mysecond() - times[3][k];
+				thread_local_times[tid][k] = mysecond() - thread_local_times[tid][k];
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
