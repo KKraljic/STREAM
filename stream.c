@@ -171,58 +171,58 @@ int main(int argc, char **argv){
 		scalar = 3.0;
 		//Copy
 		sprintf(region_tag, "COPY-%ld", stream_array_size);
-		for (k=0; k<n_times; k++){
-			times[0][k] = mysecond();
-			#pragma omp parallel 
-			{
+		#pragma omp parallel
+		{
+			for (k=0; k<n_times; k++){
+				times[0][k] = mysecond();
 				LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) c[j] = a[j];
 				LIKWID_MARKER_STOP(region_tag);
+				times[0][k] = mysecond() - times[0][k];
 			}
-			times[0][k] = mysecond() - times[0][k];
 		}
 
 		//Scale
 		sprintf(region_tag, "SCALE-%ld", stream_array_size);
-		for (k=0; k<n_times; k++){
-			times[1][k] = mysecond();
-			#pragma omp parallel
-			{
+		#pragma omp parallel
+		{
+			for (k=0; k<n_times; k++){
+				times[1][k] = mysecond();
 				LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) b[j] = scalar*c[j];
 				LIKWID_MARKER_STOP(region_tag);
+				times[1][k] = mysecond() - times[1][k];
 			}
-			times[1][k] = mysecond() - times[1][k];
 		}
 
 		//Add
 		sprintf(region_tag, "ADD-%ld", stream_array_size);
-		for (k=0; k<n_times; k++){
-			times[2][k] = mysecond();
-			#pragma omp parallel
-			{
+		#pragma omp parallel
+		{
+			for (k=0; k<n_times; k++){
+				times[2][k] = mysecond();
 				LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) c[j] = a[j]+b[j];
 				LIKWID_MARKER_STOP(region_tag);
+				times[2][k] = mysecond() - times[2][k];
 			}
-			times[2][k] = mysecond() - times[2][k];
 		}
 
 		//Triad
 		sprintf(region_tag, "TRIAD-%ld", stream_array_size);
-		for (k=0; k<n_times; k++){
-			times[3][k] = mysecond();
-			#pragma omp parallel
-			{
+		#pragma omp parallel
+		{
+			for (k=0; k<n_times; k++){
+				times[3][k] = mysecond();
 				LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait
 				for (j=0; j<stream_array_size; j++) a[j] = b[j]+scalar*c[j];
 				LIKWID_MARKER_STOP(region_tag);
+				times[3][k] = mysecond() - times[3][k];
 			}
-			times[3][k] = mysecond() - times[3][k];
 		}
 		/*	--- SUMMARY --- */
 		/* note -- skip first iteration */
