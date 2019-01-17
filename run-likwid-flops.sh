@@ -7,7 +7,7 @@
 #SBATCH --get-user-env
 #SBATCH --clusters=mpp2
 #SBATCH --export=NONE
-#SBATCH --time=03:00:00
+#SBATCH --time=00:30:00
 
 # LOAD MODULE
 module load mpi.intel

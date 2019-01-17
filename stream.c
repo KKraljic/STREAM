@@ -156,33 +156,26 @@ int main(int argc, char **argv){
 			3 * sizeof(STREAM_TYPE) * array_size
 		};
 		/* Get initial value for system clock. */
-		#pragma omp parallel for
+		#pragma omp parallel for schedule(static)
 		for (j=0; j<array_size; j++) {
 			a[j] = 1.0;
 			b[j] = 2.0;
 			c[j] = 0.0;
 		}
 
-		#pragma omp parallel for
+		#pragma omp parallel for schedule(static)
 		for (j = 0; j < array_size; j++) a[j] = 2.0E0 * a[j];
     
 		/*--- MAIN LOOP --- repeat test cases NTIMES times --- */
 		scalar = 3.0;
 		//Copy
-		double start = 0.0;
 		sprintf(region_tag, "COPY-%ld", array_size);
 		#pragma omp parallel
 		{
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				#pragma omp master
-	                        start = omp_get_wtime();
-
 				#pragma omp for nowait
 				for (j=0; j<array_size; j++) c[j] = a[j];
-	
-				#pragma omp master
-	                        times[0][k] = omp_get_wtime() - start;
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
@@ -193,14 +186,8 @@ int main(int argc, char **argv){
 		{
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				#pragma omp master
-                                start = omp_get_wtime();
-
-				#pragma omp for nowait
+				#pragma omp for nowait schedule(static)
 				for (j=0; j<array_size; j++) b[j] = scalar*c[j];
-				
-				#pragma omp master
-                                times[1][k] = omp_get_wtime() - start;
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
@@ -211,14 +198,8 @@ int main(int argc, char **argv){
 		{
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				#pragma omp master
-                                start = omp_get_wtime();
-	
-				#pragma omp for nowait
+				#pragma omp for nowait schedule(static)
 				for (j=0; j<array_size; j++) c[j] = a[j]+b[j];
-				
-				#pragma omp master
-                                times[2][k] = omp_get_wtime() - start;
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
@@ -229,14 +210,8 @@ int main(int argc, char **argv){
 		{
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				#pragma omp master
-                                start = omp_get_wtime();
-				
-				#pragma omp for nowait
+				#pragma omp for nowait schedule(static)
 				for (j=0; j<array_size; j++) a[j] = b[j]+scalar*c[j];
-			
-				#pragma omp master
-                                times[3][k] = omp_get_wtime() - start;	
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
