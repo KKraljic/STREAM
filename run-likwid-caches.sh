@@ -12,32 +12,16 @@
 # LOAD MODULE
 module load mpi.intel
 module load likwid/4.3
-mkdir results
 AMOUNT_THREADS=28
-ARRAY_SIZE=30
-N_TIMES=30
 export OMP_NUM_THREADS=$AMOUNT_THREADS
-echo '======================================================='
-echo '===========Starting Baselines=========================='
-echo '======================================================='
-echo ''
-echo '-----> Meta information:'
-module list
-echo ''
-echo ''
-echo ''
-echo '-----> Baseline ICC:'
-likwid-perfctr -g CACHES -execpid -C 0-27 -O -m icc/stream_c.exe -s $ARRAY_SIZE -n $N_TIMES > results/icc_caches.out
-echo ''
+
+ARRAY_SIZE=$((2**23))
+N_TIMES=400000
+RESULTS=results
+mkdir $RESULTS
+likwid-perfctr -g CACHES -execpid -C 0-27 -O -m icc/stream_c.exe -s $ARRAY_SIZE -n $N_TIMES > $RESULTS/icc_caches.out
 module unload mpi.intel
 module load gcc
-echo ''
-echo '-----> Meta information:'
-module list
-echo ''
-echo ''
-echo ''
-echo '-----> Baseline GCC:'
-likwid-perfctr -g CACHES -execpid -C 0-27 -O -m gcc/stream_c.exe -s $ARRAY_SIZE -n $N_TIMES > results/gcc_caches.out
+likwid-perfctr -g CACHES -execpid -C 0-27 -O -m gcc/stream_c.exe -s $ARRAY_SIZE -n $N_TIMES > $RESULTS/gcc_caches.out
 
 

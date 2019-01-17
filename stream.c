@@ -47,7 +47,7 @@
 # include <float.h>
 # include <limits.h>
 #include <likwid.h>
-
+# include <omp.h>
 /*-----------------------------------------------------------------------
  * INSTRUCTIONS:
  *
@@ -103,8 +103,8 @@ extern int omp_get_num_threads();
 
 int main(int argc, char **argv){
 	int checktick();
-	int temp, array_power = 18, offset = 0, num_threads = 0;
-	ssize_t stream_array_size, n_times = 10, j, k, count; 
+	int temp,offset = 0, num_threads = 0;
+	ssize_t max_array_size=16777216, array_size, n_times = 10000, j, k; 
 	STREAM_TYPE scalar;
 	
 	LIKWID_MARKER_INIT;
@@ -125,13 +125,13 @@ int main(int argc, char **argv){
 	while ((temp = getopt (argc, argv, "s:o:n:")) != -1){
 		switch (temp){
 		  case 's':
-			array_power = atoi(optarg);
+			max_array_size = atoi(optarg);
 			break;
 		  case 'o':
 			offset = atoi(optarg);
 			break;
 		  case 'n':
-			n_times = (ssize_t) pow(2, atoi(optarg) + 0.5);
+			n_times = atoi(optarg);
 			break;
 		  default:
 			printf("Invalid arguments. Aborting.");
@@ -139,139 +139,107 @@ int main(int argc, char **argv){
 		 }
 	}
 	
-	double t, times[4][n_times];
-	double thread_local_times[num_threads][n_times];
+	double *times[4];
+	for(j=0; j<4; j++){
+		times[j] = (double *) malloc(4*n_times*sizeof(double));
+	}
 
-	ssize_t max_array_size = (ssize_t) (pow(2, array_power) + 0.5);
-	STREAM_TYPE a[max_array_size+offset], b[max_array_size+offset], c[max_array_size+offset];
+	STREAM_TYPE *a = malloc(sizeof(STREAM_TYPE)*(max_array_size+offset));
+	STREAM_TYPE *b = malloc(sizeof(STREAM_TYPE)*(max_array_size+offset));
+	STREAM_TYPE *c = malloc(sizeof(STREAM_TYPE)*(max_array_size+offset));
 	
-	for(count=1; count<array_power; count++){
-		stream_array_size = (ssize_t) (pow(2, count) + 0.5);
+	for(array_size=1; array_size<max_array_size; array_size=array_size*2){
 		double	bytes[4] = {
-			2 * sizeof(STREAM_TYPE) * stream_array_size,
-			2 * sizeof(STREAM_TYPE) * stream_array_size,
-			3 * sizeof(STREAM_TYPE) * stream_array_size,
-			3 * sizeof(STREAM_TYPE) * stream_array_size
+			2 * sizeof(STREAM_TYPE) * array_size,
+			2 * sizeof(STREAM_TYPE) * array_size,
+			3 * sizeof(STREAM_TYPE) * array_size,
+			3 * sizeof(STREAM_TYPE) * array_size
 		};
 		/* Get initial value for system clock. */
 		#pragma omp parallel for
-		for (j=0; j<stream_array_size; j++) {
+		for (j=0; j<array_size; j++) {
 			a[j] = 1.0;
 			b[j] = 2.0;
 			c[j] = 0.0;
 		}
 
-		t = mysecond();
 		#pragma omp parallel for
-		for (j = 0; j < stream_array_size; j++) a[j] = 2.0E0 * a[j];
-		t = 1.0E6 * (mysecond() - t);
-		
+		for (j = 0; j < array_size; j++) a[j] = 2.0E0 * a[j];
     
 		/*--- MAIN LOOP --- repeat test cases NTIMES times --- */
 		scalar = 3.0;
 		//Copy
-		sprintf(region_tag, "COPY-%ld-NTIMES-%ld", stream_array_size, n_times);
+		double start = 0.0;
+		sprintf(region_tag, "COPY-%ld", array_size);
 		#pragma omp parallel
 		{
-			int tid = omp_get_thread_num();
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				thread_local_times[tid][k] = mysecond();
+				#pragma omp master
+	                        start = omp_get_wtime();
+
 				#pragma omp for nowait
-				for (j=0; j<stream_array_size; j++) c[j] = a[j];
-				thread_local_times[tid][k] = mysecond() - thread_local_times[tid][k];
+				for (j=0; j<array_size; j++) c[j] = a[j];
+	
+				#pragma omp master
+	                        times[0][k] = omp_get_wtime() - start;
 			}
 			LIKWID_MARKER_STOP(region_tag);
-		}
-
-		#pragma omp barrier
-		int tid;
-		for(k=0; k<n_times; k++){
-			double minimum = DBL_MAX;
-			for(tid=0; tid<num_threads; tid++){
-				if(minimum > thread_local_times[tid][k]){
-					minimum = thread_local_times[tid][k];
-				}
-			}
-			times[0][k] = minimum;
 		}
 
 		//Scale
-		sprintf(region_tag, "SCALE-%ld-NTIMES-%ld", stream_array_size, n_times);
+		sprintf(region_tag, "SCALE-%ld", array_size);
 		#pragma omp parallel
 		{
-			int tid = omp_get_thread_num();
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				thread_local_times[tid][k] = mysecond();
+				#pragma omp master
+                                start = omp_get_wtime();
+
 				#pragma omp for nowait
-				for (j=0; j<stream_array_size; j++) b[j] = scalar*c[j];
-				thread_local_times[tid][k] = mysecond() - thread_local_times[tid][k];
+				for (j=0; j<array_size; j++) b[j] = scalar*c[j];
+				
+				#pragma omp master
+                                times[1][k] = omp_get_wtime() - start;
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
-		#pragma omp barrier
-                for(k=0; k<n_times; k++){
-                        double minimum = DBL_MAX;
-                        for(tid=0; tid<num_threads; tid++){
-                                if(minimum > thread_local_times[tid][k]){
-                                        minimum = thread_local_times[tid][k];
-                                }
-                        }
-                        times[1][k] = minimum;
-                }
-
 
 		//Add
-		sprintf(region_tag, "ADD-%ld-NTIMES-%ld", stream_array_size, n_times);
+		sprintf(region_tag, "ADD-%ld", array_size);
 		#pragma omp parallel
 		{
-			int tid = omp_get_thread_num();
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				thread_local_times[tid][k] = mysecond();
+				#pragma omp master
+                                start = omp_get_wtime();
+	
 				#pragma omp for nowait
-				for (j=0; j<stream_array_size; j++) c[j] = a[j]+b[j];
-				thread_local_times[tid][k] = mysecond() - thread_local_times[tid][k];
+				for (j=0; j<array_size; j++) c[j] = a[j]+b[j];
+				
+				#pragma omp master
+                                times[2][k] = omp_get_wtime() - start;
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
-		#pragma omp barrier
-                for(k=0; k<n_times; k++){
-                        double minimum = DBL_MAX;
-                        for(tid=0; tid<num_threads; tid++){
-                                if(minimum > thread_local_times[tid][k]){
-                                        minimum = thread_local_times[tid][k];
-                                }
-                        }
-                        times[2][k] = minimum;
-                }
-
 
 		//Triad
-		sprintf(region_tag, "TRIAD-%ld-NTIMES-%ld", stream_array_size, n_times);
+		sprintf(region_tag, "TRIAD-%ld", array_size);
 		#pragma omp parallel
 		{
-			int tid = omp_get_thread_num();
 			LIKWID_MARKER_START(region_tag);
 			for (k=0; k<n_times; k++){
-				thread_local_times[tid][k] = mysecond();
+				#pragma omp master
+                                start = omp_get_wtime();
+				
 				#pragma omp for nowait
-				for (j=0; j<stream_array_size; j++) a[j] = b[j]+scalar*c[j];
-				thread_local_times[tid][k] = mysecond() - thread_local_times[tid][k];
+				for (j=0; j<array_size; j++) a[j] = b[j]+scalar*c[j];
+			
+				#pragma omp master
+                                times[3][k] = omp_get_wtime() - start;	
 			}
 			LIKWID_MARKER_STOP(region_tag);
 		}
-		#pragma omp barrier
-                for(k=0; k<n_times; k++){
-                        double minimum = DBL_MAX;
-                        for(tid=0; tid<num_threads; tid++){
-                                if(minimum > thread_local_times[tid][k]){
-                                        minimum = thread_local_times[tid][k];
-                                }
-                        }
-                        times[3][k] = minimum;
-                }
 
 		/*	--- SUMMARY --- */
 		/* note -- skip first iteration */
@@ -279,18 +247,18 @@ int main(int argc, char **argv){
 		for (k=1; k<n_times; k++){
 			for (j=0; j<4; j++){
 				avgtime[j] = avgtime[j] + times[j][k];
-				mintime[j] = MIN(mintime[j], times[j][k]);
+				if(times[j][k]> 0.0)mintime[j] = MIN(mintime[j], times[j][k]);
 				maxtime[j] = MAX(maxtime[j], times[j][k]);
 			}
 		}
-		printf("%s %12s %12s %8s %21s %13s %12s %12s\n", "Threads", "Arr_Size", "NTimes", "Func", "Avrg_BW_[MB/s]", "Avg_time", "Min_time", "Max_time");
+		printf("%s %12s %8s %12s %21s %13s %12s %12s\n", "Threads", "Arr_Size", "NTimes", "Func", "Avrg_BW_[GB/s]", "Avg_time", "Min_time", "Max_time");
 		for (j=0; j<4; j++) {
 			avgtime[j] = avgtime[j]/(double)(n_times-1);
-			printf("%i %16lu %9ld %20s %2.1f  %19.6f  %11.6f  %11.6f\n", num_threads, 
-			   stream_array_size, 
+			printf("%i %16lu %9ld %20s %3.4f  %18.6f  %11.6f  %11.6f\n", num_threads, 
+			   array_size, 
 			   n_times,
 			   label[j], 	
-			   1.0E-06 * bytes[j]/avgtime[j],
+			   1.0E-09 * bytes[j]/avgtime[j],
 			   avgtime[j],
 			   mintime[j],
 			   maxtime[j]);
@@ -298,6 +266,9 @@ int main(int argc, char **argv){
 	}
 	
     LIKWID_MARKER_CLOSE;
+    free(a);
+    free(b);
+    free(c);
     return 0;
 }
 
@@ -342,10 +313,7 @@ checktick()
 
 double mysecond()
 {
-        struct timeval tp;
-        struct timezone tzp;
-
-        gettimeofday(&tp,&tzp);
-        return ( (double) tp.tv_sec + (double) tp.tv_usec * 1.e-6 );
+	double time = omp_get_wtime();
+        return time;
 }
 
