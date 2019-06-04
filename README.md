@@ -10,6 +10,6 @@ This script loads all required modules and compiles all required binaries.
 
 Submit either the run-likwid-caches.sh or the run-likwid-flops.sh scripts using slurm:
 
-   sbatch {run-likwid-caches.sh, run-likwid-flops.sh}
+    sbatch {run-likwid-caches.sh, run-likwid-flops.sh}
 
 After the execution of these scripts, you'll find the output in the freshly created results directory.
