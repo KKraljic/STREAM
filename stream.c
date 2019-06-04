@@ -47,6 +47,7 @@
 # include <float.h>
 # include <limits.h>
 #include <likwid.h>
+#include <errno.h>
 # include <omp.h>
 /*-----------------------------------------------------------------------
  * INSTRUCTIONS:
@@ -103,33 +104,32 @@ extern int omp_get_num_threads();
 
 int main(int argc, char **argv){
 	int checktick();
-	int temp,offset = 0, num_threads = 0;
-	ssize_t max_array_size=16777216, array_size, n_times = 10000, j, k; 
+	int temp, num_threads = 0, n_times = 10000;
+	size_t offset = 0;
+	size_t max_array_size, array_size, j, k;
 	STREAM_TYPE scalar;
-	
-	LIKWID_MARKER_INIT;
-        #pragma omp parallel
-        {
-                LIKWID_MARKER_THREADINIT;
-        }
 
-        #pragma omp parallel shared(num_threads)
+
+#pragma omp parallel shared(num_threads)
+    {
+        #pragma omp critical
         {
-                #pragma omp atomic 
-                num_threads++;
+            num_threads++;
         }
+    }
+
+
+	LIKWID_MARKER_INIT;
+    #pragma omp parallel
+    {
+        LIKWID_MARKER_THREADINIT;
+    }
 
 
 	char region_tag[80];//80 is an arbitratry number; large enough to keep the tags...
 	
 	while ((temp = getopt (argc, argv, "s:o:n:")) != -1){
 		switch (temp){
-		  case 's':
-			max_array_size = atoi(optarg);
-			break;
-		  case 'o':
-			offset = atoi(optarg);
-			break;
 		  case 'n':
 			n_times = atoi(optarg);
 			break;
@@ -138,22 +138,30 @@ int main(int argc, char **argv){
 			exit(1);
 		 }
 	}
-	
-	double *times[4];
+
+    //max_array_size = 268435456;
+	max_array_size= 2147483648;
+    //max_array_size = 128;
+	double **times;
+	times = malloc(sizeof(double *) * 4);
 	for(j=0; j<4; j++){
 		times[j] = (double *) malloc(4*n_times*sizeof(double));
 	}
 
+
 	STREAM_TYPE *a = malloc(sizeof(STREAM_TYPE)*(max_array_size+offset));
+
 	STREAM_TYPE *b = malloc(sizeof(STREAM_TYPE)*(max_array_size+offset));
+
 	STREAM_TYPE *c = malloc(sizeof(STREAM_TYPE)*(max_array_size+offset));
+
 	
 	for(array_size=1; array_size<max_array_size; array_size=array_size*2){
 		double	bytes[4] = {
-			2 * sizeof(STREAM_TYPE) * array_size,
-			2 * sizeof(STREAM_TYPE) * array_size,
-			3 * sizeof(STREAM_TYPE) * array_size,
-			3 * sizeof(STREAM_TYPE) * array_size
+			2.0 * sizeof(STREAM_TYPE) * array_size,
+			2.0 * sizeof(STREAM_TYPE) * array_size,
+			3.0 * sizeof(STREAM_TYPE) * array_size,
+			3.0 * sizeof(STREAM_TYPE) * array_size
 		};
 		/* Get initial value for system clock. */
 		#pragma omp parallel for schedule(static)
@@ -170,50 +178,59 @@ int main(int argc, char **argv){
 		scalar = 3.0;
 		//Copy
 		sprintf(region_tag, "COPY-%ld", array_size);
-		#pragma omp parallel
-		{
-			LIKWID_MARKER_START(region_tag);
-			for (k=0; k<n_times; k++){
+
+
+
+		for (k=0; k<n_times; k++){
+		    times[0][k] = omp_get_wtime();
+            #pragma omp parallel
+		    {
+		        LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait
 				for (j=0; j<array_size; j++) c[j] = a[j];
+                LIKWID_MARKER_STOP(region_tag);
 			}
-			LIKWID_MARKER_STOP(region_tag);
+			times[0][k] = omp_get_wtime() - times[0][k];
 		}
 
 		//Scale
 		sprintf(region_tag, "SCALE-%ld", array_size);
-		#pragma omp parallel
-		{
-			LIKWID_MARKER_START(region_tag);
-			for (k=0; k<n_times; k++){
+        for (k=0; k<n_times; k++){
+            times[1][k] = omp_get_wtime();
+		    #pragma omp parallel
+		    {
+			    LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait schedule(static)
 				for (j=0; j<array_size; j++) b[j] = scalar*c[j];
+                LIKWID_MARKER_STOP(region_tag);
 			}
-			LIKWID_MARKER_STOP(region_tag);
+            times[1][k] = omp_get_wtime() - times[1][k];
 		}
-
 		//Add
 		sprintf(region_tag, "ADD-%ld", array_size);
-		#pragma omp parallel
-		{
-			LIKWID_MARKER_START(region_tag);
-			for (k=0; k<n_times; k++){
+        for (k=0; k<n_times; k++){
+            times[2][k] = omp_get_wtime();
+		    #pragma omp parallel
+		    {
+			    LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait schedule(static)
 				for (j=0; j<array_size; j++) c[j] = a[j]+b[j];
+                LIKWID_MARKER_STOP(region_tag);
 			}
-			LIKWID_MARKER_STOP(region_tag);
+            times[2][k] = omp_get_wtime() - times[2][k];
 		}
-
 		//Triad
 		sprintf(region_tag, "TRIAD-%ld", array_size);
-		#pragma omp parallel
-		{
-			LIKWID_MARKER_START(region_tag);
-			for (k=0; k<n_times; k++){
+        for (k=0; k<n_times; k++){
+            times[3][k] = omp_get_wtime();
+		    #pragma omp parallel
+		    {
+			    LIKWID_MARKER_START(region_tag);
 				#pragma omp for nowait schedule(static)
 				for (j=0; j<array_size; j++) a[j] = b[j]+scalar*c[j];
+                LIKWID_MARKER_STOP(region_tag);
 			}
-			LIKWID_MARKER_STOP(region_tag);
+            times[3][k] = omp_get_wtime() - times[3][k];
 		}
 
 		/*	--- SUMMARY --- */
@@ -226,14 +243,14 @@ int main(int argc, char **argv){
 				maxtime[j] = MAX(maxtime[j], times[j][k]);
 			}
 		}
-		printf("%s %12s %8s %12s %21s %13s %12s %12s\n", "Threads", "Arr_Size", "NTimes", "Func", "Avrg_BW_[GB/s]", "Avg_time", "Min_time", "Max_time");
+		printf("%s,%s,%s,%s,%s,%s,%s,%s\n", "Threads", "Arr_Size", "NTimes", "Func", "Max_BW_[GB/s]", "Avg_time", "Min_time", "Max_time");
 		for (j=0; j<4; j++) {
 			avgtime[j] = avgtime[j]/(double)(n_times-1);
-			printf("%i %16lu %9ld %20s %3.4f  %18.6f  %11.6f  %11.6f\n", num_threads, 
+			printf("%i,%lu,%ld,%s,%.4f,%.6f,%.6f,%.6f\n", num_threads,
 			   array_size, 
 			   n_times,
 			   label[j], 	
-			   1.0E-09 * bytes[j]/avgtime[j],
+			   1.0E-09 * bytes[j]/mintime[j],
 			   avgtime[j],
 			   mintime[j],
 			   maxtime[j]);
