@@ -10,6 +10,8 @@ This script loads all required modules and compiles all required binaries.
 
 All run scripts are in the "run-scripts" sub directories. Currently, there are scripts for caches and for flops. In order to run a specific benchmark (sum, scale, triad, copy), please modify the following command as required:
 
+    cd run-scripts/{caches, flops}
     sbatch <run-script>
+    cd ../../
 
-After the execution of these scripts, you'll find the output in the freshly created results directory.
+After the execution of these scripts, you'll find the output in the freshly created results directory. Please consider that the paths are hard-coded in the run-scripts. Adjust to your needs.
