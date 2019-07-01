@@ -8,8 +8,8 @@ This script loads all required modules and compiles all required binaries.
 
 # Running this modification of STREAM
 
-Submit either the run-likwid-caches.sh or the run-likwid-flops.sh scripts using slurm:
+All run scripts are in the "run-scripts" sub directories. Currently, there are scripts for caches and for flops. In order to run a specific benchmark (sum, scale, triad, copy), please modify the following command as required:
 
-    sbatch {run-likwid-caches.sh, run-likwid-flops.sh}
+    sbatch <run-script>
 
 After the execution of these scripts, you'll find the output in the freshly created results directory.

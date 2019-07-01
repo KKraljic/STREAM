@@ -5,7 +5,10 @@ module load mpi.intel
 
 ./compile.sh -c icc
 mkdir -p icc/
-mv stream_c.exe icc/
+mv add.exe icc/
+mv scale.exe icc/
+mv copy.exe icc/
+mv triad.exe icc/
 
 #GCC
 module unload mpi.intel
@@ -15,4 +18,7 @@ module list
 
 ./compile.sh -c gcc
 mkdir -p gcc/
-mv stream_c.exe gcc/
+mv add.exe gcc/
+mv scale.exe gcc/
+mv copy.exe gcc/
+mv triad.exe gcc/
